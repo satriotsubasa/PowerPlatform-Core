@@ -173,6 +173,62 @@ python .\scripts\upsert_data.py --help
 python .\scripts\get_flow_trigger_url.py --help
 ```
 
+## Standalone vs. Extension Mode
+
+PowerPlatform-Core can be used in two ways depending on your needs.
+
+### Standalone (Core only)
+
+Install this skill and use it directly against any Power Platform or Dataverse repo. No other skill is required. This is the recommended starting point for most users.
+
+```powershell
+.\install-skill.ps1
+```
+
+Then invoke it in Codex:
+
+```text
+Use $powerplatform-core to inspect this repo and infer the solution structure.
+```
+
+Core is generic by design — it works across unfamiliar repos, mixed layouts, and varying namespace conventions without any configuration.
+
+### With an Overlay Extension
+
+An overlay extension is a separate skill that layers house-style conventions, project-specific references, and team-specific defaults on top of Core. The overlay is installed as its own skill and replaces the `$powerplatform-core` prompt with its own skill token.
+
+If you are working in a repo that has an accompanying overlay skill:
+
+1. Install Core first:
+   ```powershell
+   # From this repo
+   .\install-skill.ps1
+   ```
+
+2. Install the overlay skill (example: PowerPlatform-Overlay):
+   ```powershell
+   # From the overlay repo
+   .\install-skill.ps1
+   ```
+
+3. Use the overlay skill token instead of `$powerplatform-core`:
+   ```text
+   Use $powerplatform-overlay to inspect this repo.
+   ```
+
+The overlay skill bundles Core's runtime files together with its own files into a single merged skill. Core's generic capabilities are fully available through the overlay — you do not need to invoke both.
+
+### How to tell which one to use
+
+| Situation | Use |
+|-----------|-----|
+| Any generic Power Platform / Dataverse repo | `$powerplatform-core` standalone |
+| Repo that follows a specific team's house conventions | Overlay skill (e.g. `$powerplatform-overlay`) |
+| Unfamiliar repo, no overlay available | `$powerplatform-core` standalone |
+| Building your own overlay extension | See [docs/core-overlay-architecture.md](docs/core-overlay-architecture.md) |
+
+---
+
 ## Current Boundaries
 
 Core intentionally does not:
