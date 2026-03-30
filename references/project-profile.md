@@ -1,0 +1,102 @@
+# Project Profile
+
+Use this reference when a repo has a stable architecture that discovery should not have to guess every time.
+
+## Purpose
+
+Some repos have stable source areas that discovery should not have to guess every time. Common examples include:
+
+- layered code areas such as `*.Business`, `*.Plugins`, and `*.Data`
+- dedicated `WebResources`, `*.PCF`, or `Word Templates` folders
+- repos where only part of the Dataverse solution source is stored locally
+- repos where a local unpacked solution is only a supporting packaging solution such as a PCF wrapper, not the main business app solution
+
+For those repos, add an optional project profile file so the skill can keep using the existing structure without guessing the wrong live solution.
+If the repo is solution-only, very small, or still sparse, do not force a profile unnecessarily.
+
+## Supported File Paths
+
+The discovery script checks these locations in order:
+
+- `.codex/power-platform.project-profile.json`
+- `power-platform.project-profile.json`
+
+Prefer the `.codex/` path when the profile is repo-local guidance rather than business-domain source.
+
+Starter examples are included in this repo:
+
+- `references/project-profile.template.json`
+- `references/power-platform.flow-guards.template.json`
+
+Overlay-specific project-profile examples should live in the overlay repo that owns those conventions, not in Core.
+
+## Recommended Fields
+
+```json
+{
+  "repoSolutionName": "Contoso.Sample",
+  "mainSolutionUniqueName": "ContosoCore",
+  "publisherPrefix": "cts",
+  "managedStrategy": "both",
+  "repoArchetype": "layered-dotnet-dataverse",
+  "solutionSourceModel": "hybrid-code-and-supporting-solution-source",
+  "namespaceRoot": "Contoso.Sample",
+  "localSupportingSolutions": [
+    "Contoso_PCF"
+  ],
+  "criticalPluginSteps": [
+    "Account Create"
+  ],
+  "flowGuardSpecPath": ".codex/power-platform.flow-guards.json",
+  "intentionallyDisabledPluginSteps": [
+    {
+      "name": "Account Archive",
+      "pluginTypeName": "Contoso.Sample.Plugins.AccountPlugin",
+      "messageName": "Update",
+      "primaryEntityLogicalName": "account",
+      "stage": "PreOperation",
+      "mode": "Synchronous"
+    }
+  ],
+  "sourceAreas": {
+    "business": "Contoso.Sample.Business",
+    "data": "Contoso.Sample.Data",
+    "supplementalData": "Data",
+    "plugins": "Contoso.Sample.Plugins",
+    "webResources": "WebResources",
+    "pcf": "Contoso.Sample.PCF",
+    "wordTemplates": "Word Templates",
+    "dataverse": "Dataverse",
+    "reference": "Reference"
+  }
+}
+```
+
+## Field Guidance
+
+- `mainSolutionUniqueName`: the main live Dataverse solution the skill should target for app work.
+- `localSupportingSolutions`: local solution sources that exist only for packaging or support work, such as a PCF wrapper solution.
+- `sourceAreas.business`, `data`, `plugins`, `webResources`, `pcf`: the repo paths that are authoritative for those asset types.
+- `sourceAreas.supplementalData`: use this for root `Data/` folders that hold JSON seed data, configuration snapshots, or migration content instead of early-bound code.
+- `sourceAreas.wordTemplates`: use this for source-controlled `.docx` templates that drive plug-in or document-generation logic.
+- `sourceAreas.dataverse`: the local metadata reference area, typically hydrated from the selected live solution when needed.
+- `sourceAreas.reference`: docs, guides, or external references only. Do not treat this as a deployment source by default.
+- `criticalPluginSteps`: optional step selectors that must stay enabled after plug-in push or registration work. A simple string matches by step `name`; an object can match by `name`, `pluginTypeName`, `messageName`, `primaryEntityLogicalName`, `stage`, or `mode`.
+- `intentionallyDisabledPluginSteps`: optional step selectors that should remain disabled even after registration or push flows. Use the same selector shape as `criticalPluginSteps`.
+- `flowGuardSpecPath`: optional relative path to a repo-owned flow-guard contract. If omitted, Core will look for `.codex/power-platform.flow-guards.json` and then `power-platform.flow-guards.json`.
+
+## Operating Model
+
+With a project profile in place:
+
+- plug-in work still comes from `*.Business`, `*.Plugins`, and `*.Data`
+- plug-in registration defaults can inherit expected enabled or disabled step state from `criticalPluginSteps` and `intentionallyDisabledPluginSteps`
+- critical flows can inherit semantic deployment checks from `flowGuardSpecPath` or the default flow-guard file paths
+- web resource work still comes from `WebResources`
+- PCF work still comes from `*.PCF`
+- document-template work comes from `Word Templates`
+- metadata reference work can use `Dataverse/<solution-unique-name>/`
+- the selected live solution remains the deployment target
+
+The profile does not replace discovery. It narrows ambiguity and prevents the skill from confusing a supporting local solution with the main app solution.
+If a repo uses different folder names, set those exact paths here instead of renaming the repo to fit an example.

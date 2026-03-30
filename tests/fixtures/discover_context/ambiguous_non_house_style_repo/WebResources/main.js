@@ -1,0 +1,3 @@
+function zetaMain() {
+  return "ok";
+}

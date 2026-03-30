@@ -1,0 +1,82 @@
+[
+  {
+    "name": "layered hybrid repo",
+    "fixture": "layered_hybrid_repo",
+    "expected_inferred": {
+      "repo_archetype": "layered-dotnet-dataverse",
+      "solution_source_model": "hybrid-code-and-solution-source",
+      "solution_folder": "Dataverse/SampleSolution",
+      "plugin_project": "Contoso.Sample.Plugins/Contoso.Sample.Plugins.csproj"
+    },
+    "forbidden_questions": [
+      "What is the target solution unique name for this task?",
+      "Which folder or repository contains the Dataverse solution source for this task?"
+    ],
+    "forbidden_warnings": [
+      "No Power Platform solution, plug-in, PCF, pipeline, or deployment artifacts were detected in the scan path."
+    ]
+  },
+  {
+    "name": "solution-centric unpacked repo",
+    "fixture": "unpacked_solution_repo",
+    "expected_inferred": {
+      "repo_archetype": "solution-centric-dataverse",
+      "solution_source_model": "unpacked-solution-source",
+      "solution_folder": "Dataverse/ContosoCore",
+      "plugin_project": null
+    },
+    "required_questions": [
+      "What is the publisher prefix for this task?"
+    ],
+    "forbidden_questions": [
+      "What is the target solution unique name for this task?",
+      "Which folder or repository contains the Dataverse solution source for this task?"
+    ]
+  },
+  {
+    "name": "ambiguous mixed repo",
+    "fixture": "ambiguous_non_house_style_repo",
+    "expected_inferred": {
+      "data_area": "Zeta.App.Data",
+      "plugin_project": "Zeta.App.Plugins/Zeta.App.Plugins.csproj",
+      "repo_archetype": "layered-dotnet-dataverse"
+    },
+    "forbidden_questions": [
+      "What is the target solution unique name for this task?"
+    ],
+    "forbidden_warnings": [
+      "No Power Platform solution, plug-in, PCF, pipeline, or deployment artifacts were detected in the scan path."
+    ]
+  },
+  {
+    "name": "tool-only repo",
+    "fixture": "tool_only_repo",
+    "expected_inferred": {
+      "plugin_project": null,
+      "tools_area": "Tools",
+      "repo_archetype": null
+    },
+    "required_questions": [
+      "What is the target solution unique name for this task?",
+      "Which folder or repository contains the Dataverse solution source for this task?"
+    ],
+    "forbidden_warnings": [
+      "No Power Platform solution, plug-in, PCF, pipeline, or deployment artifacts were detected in the scan path."
+    ]
+  },
+  {
+    "name": "sparse repo",
+    "fixture": "no_structure_repo",
+    "expected_inferred": {
+      "repo_archetype": null,
+      "plugin_project": null
+    },
+    "required_questions": [
+      "What is the target solution unique name for this task?",
+      "Which folder or repository contains the Dataverse solution source for this task?"
+    ],
+    "required_warnings": [
+      "No Power Platform solution, plug-in, PCF, pipeline, or deployment artifacts were detected in the scan path."
+    ]
+  }
+]

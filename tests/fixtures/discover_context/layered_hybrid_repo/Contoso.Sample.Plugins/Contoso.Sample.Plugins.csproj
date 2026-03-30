@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Contoso.Sample.Plugins</AssemblyName>
+    <RootNamespace>Contoso.Sample.Plugins</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\\Contoso.Sample.Data\\Contoso.Sample.Data.csproj" />
+  </ItemGroup>
+</Project>

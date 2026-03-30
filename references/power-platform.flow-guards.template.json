@@ -1,0 +1,36 @@
+{
+  "flows": [
+    {
+      "match": {
+        "displayName": "[Example] When Document Signed",
+        "workflowId": "11111111-1111-1111-1111-111111111111"
+      },
+      "requiredSwitchCases": [
+        {
+          "switchName": "Determine_document_type",
+          "caseName": "Case A",
+          "requiredActionNames": [
+            "List_rows_contoso_contacts",
+            "List_rows_contoso_authorisedcontacts"
+          ]
+        },
+        {
+          "switchName": "Determine_document_type",
+          "caseName": "Case B",
+          "requiredActionNames": [
+            "List_rows_contoso_contacts",
+            "List_rows_contoso_authorisedcontacts"
+          ]
+        },
+        {
+          "switchName": "Determine_document_type",
+          "caseName": "Case C",
+          "requiredActionNames": [
+            "List_rows_contoso_contacts",
+            "List_rows_contoso_authorisedcontacts"
+          ]
+        }
+      ]
+    }
+  ]
+}

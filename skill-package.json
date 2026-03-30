@@ -1,0 +1,28 @@
+{
+  "name": "powerplatform-core",
+  "version": "1.0.0",
+  "description": "Generic, code-first Power Platform skill for Dataverse development and ALM",
+  "runtimePaths": [
+    "SKILL.md",
+    "agents",
+    "scripts",
+    "references",
+    "assets",
+    "tools"
+  ],
+  "excludeDirectories": [
+    ".git",
+    ".vs",
+    "__pycache__",
+    "bin",
+    "coverage",
+    "dist",
+    "node_modules",
+    "obj",
+    "out"
+  ],
+  "excludeFiles": [
+    "*.pyc",
+    "*.pyo"
+  ]
+}

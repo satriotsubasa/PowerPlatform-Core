@@ -1,0 +1,35 @@
+<svg width="640" height="240" viewBox="0 0 640 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo-top" x1="78" y1="42" x2="232" y2="118" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#23B7A6"/>
+      <stop offset="1" stop-color="#0F6AA7"/>
+    </linearGradient>
+    <linearGradient id="logo-bottom" x1="36" y1="150" x2="194" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DDB7A"/>
+      <stop offset="0.35" stop-color="#2AB28D"/>
+      <stop offset="1" stop-color="#109496"/>
+    </linearGradient>
+    <linearGradient id="logo-shadow" x1="20" y1="160" x2="94" y2="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A5F4B" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#0A5F4B" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="logo-soft-shadow" x="10" y="26" width="252" height="210" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0A2130" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#logo-soft-shadow)">
+    <path d="M95 36H184C211.614 36 234 58.386 234 86C234 113.614 211.614 136 184 136H122C104.69 136 88.776 145.544 80.619 160.819L48.359 221.239C44.889 227.736 38.125 231.792 30.759 231.792C22.055 231.792 15 224.737 15 216.032C15 213.498 15.612 211 16.782 208.752L54.772 135.778C64.049 117.967 82.454 106.8 102.535 106.8H175.5C189.031 106.8 200 95.831 200 82.3C200 68.769 189.031 57.8 175.5 57.8H95C88.925 57.8 84 52.875 84 46.8C84 40.925 88.925 36 95 36Z" fill="url(#logo-top)"/>
+    <path d="M96.948 92H176.5C190.031 92 201 102.969 201 116.5C201 130.031 190.031 141 176.5 141H104.872C86.83 141 70.324 151.177 62.22 167.292L24.845 241.609C22.159 246.95 16.702 250.326 10.725 250.326C4.803 250.326 0 245.523 0 239.601C0 237.854 0.426 236.135 1.24 234.589L40.451 160.122C51.559 139.029 73.462 125.8 97.301 125.8H165C171.627 125.8 177 120.427 177 113.8C177 107.173 171.627 101.8 165 101.8H85.137C79.063 101.8 74.137 96.875 74.137 90.8C74.137 84.925 79.063 80 84.938 80C89.55 80 93.834 82.355 96.948 92Z" fill="url(#logo-bottom)"/>
+    <path d="M18 210C22 198 30 189 42 184H96L77 219H31C25 219 20.903 216.249 18 210Z" fill="url(#logo-shadow)"/>
+  </g>
+
+  <g transform="translate(282 72)">
+    <text x="0" y="0" fill="#12384C" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="700">
+      Power Platform Dev
+    </text>
+    <text x="0" y="42" fill="#4D6A79" font-family="Segoe UI, Arial, sans-serif" font-size="19" font-weight="500">
+      Dataverse, model-driven apps, plug-ins, and ALM
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,3 @@
+function contosoMain() {
+  return "ok";
+}

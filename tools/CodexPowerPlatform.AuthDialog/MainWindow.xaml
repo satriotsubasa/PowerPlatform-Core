@@ -1,0 +1,269 @@
+<Window x:Class="CodexPowerPlatform.AuthDialog.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Codex Power Platform Sign In"
+        Width="860"
+        Height="760"
+        MinWidth="760"
+        MinHeight="700"
+        WindowStartupLocation="CenterScreen"
+        Background="#F4F7FB"
+        Closing="Window_Closing">
+  <Window.Resources>
+    <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="PanelBorderBrush" Color="#D7DFEA" />
+    <SolidColorBrush x:Key="SubtleBrush" Color="#5F6C7B" />
+    <SolidColorBrush x:Key="AccentBrush" Color="#2563EB" />
+    <SolidColorBrush x:Key="AccentBorderBrush" Color="#1D4ED8" />
+    <SolidColorBrush x:Key="SuccessBrush" Color="#DCFCE7" />
+    <SolidColorBrush x:Key="SuccessTextBrush" Color="#166534" />
+    <SolidColorBrush x:Key="ErrorBrush" Color="#FEE2E2" />
+    <SolidColorBrush x:Key="ErrorTextBrush" Color="#991B1B" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#DBEAFE" />
+    <SolidColorBrush x:Key="InfoTextBrush" Color="#1D4ED8" />
+
+    <Style TargetType="Border" x:Key="PanelStyle">
+      <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="18" />
+      <Setter Property="Padding" Value="20" />
+      <Setter Property="Margin" Value="0,0,0,16" />
+    </Style>
+
+    <Style TargetType="TextBox">
+      <Setter Property="Background" Value="#FAFCFE" />
+      <Setter Property="BorderBrush" Value="#CBD5E1" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style TargetType="ComboBox">
+      <Setter Property="Background" Value="#FAFCFE" />
+      <Setter Property="BorderBrush" Value="#CBD5E1" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Margin" Value="0,6,0,0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="MinHeight" Value="42" />
+    </Style>
+
+    <Style TargetType="Button">
+      <Setter Property="Margin" Value="0,0,12,0" />
+      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+  </Window.Resources>
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled"
+                CanContentScroll="True"
+                PanningMode="VerticalFirst">
+    <Grid Margin="28">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <Border Style="{StaticResource PanelStyle}"
+              Background="#0F172A"
+              BorderBrush="#0F172A"
+              Padding="24">
+        <StackPanel>
+          <TextBlock Text="Power Platform Connection Gate"
+                     Foreground="White"
+                     FontSize="30"
+                     FontWeight="SemiBold" />
+          <TextBlock Margin="0,10,0,0"
+                     Foreground="#D6E2FF"
+                     FontSize="15"
+                     TextWrapping="Wrap"
+                     Text="Enter the target org or maker URL, force interactive sign-in, and only hand control back to Codex after a successful read-only Dataverse validation." />
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="1" Style="{StaticResource PanelStyle}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+
+          <StackPanel Grid.Row="0" Grid.ColumnSpan="2">
+            <TextBlock FontSize="14"
+                       FontWeight="SemiBold"
+                       Text="Target URL" />
+            <TextBlock Margin="0,4,0,0"
+                       Foreground="{StaticResource SubtleBrush}"
+                       TextWrapping="Wrap"
+                       Text="Paste a Dataverse org URL, a Power Apps environment URL, or a Power Apps solution URL. The dialog resolves the Dataverse org URL before sign-in." />
+            <TextBox x:Name="TargetUrlTextBox" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,16,12,0">
+            <TextBlock FontSize="14"
+                       FontWeight="SemiBold"
+                       Text="Username" />
+            <TextBlock Margin="0,4,0,0"
+                       Foreground="{StaticResource SubtleBrush}"
+                       Text="Used as the interactive login hint." />
+            <TextBox x:Name="UsernameTextBox" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="1" Grid.Column="1" Margin="12,16,0,0">
+            <TextBlock FontSize="14"
+                       FontWeight="SemiBold"
+                       Text="Tenant ID" />
+            <TextBlock Margin="0,4,0,0"
+                       Foreground="{StaticResource SubtleBrush}"
+                       Text="Optional. Prefilled from the active PAC profile when available." />
+            <TextBox x:Name="TenantIdTextBox" />
+          </StackPanel>
+
+          <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Margin="0,16,0,0">
+            <TextBlock FontSize="14"
+                       FontWeight="SemiBold"
+                       Text="Resolved Dataverse Org URL" />
+            <TextBox x:Name="ResolvedEnvironmentUrlTextBox"
+                     IsReadOnly="True"
+                     Background="#EEF3F8" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="2"
+              Style="{StaticResource PanelStyle}"
+              Background="#EFF6FF"
+              BorderBrush="#BFDBFE">
+        <TextBlock Foreground="#1D4ED8"
+                   FontSize="14"
+                   TextWrapping="Wrap"
+                   Text="Interactive sign-in is always forced in this dialog. Even if MSAL has a cached token, this preflight step will still prompt so you can confirm the target environment explicitly." />
+      </Border>
+
+      <Border Grid.Row="3" Style="{StaticResource PanelStyle}">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+
+          <StackPanel Orientation="Horizontal">
+            <Border x:Name="StatusBadge"
+                    Background="{StaticResource InfoBrush}"
+                    CornerRadius="999"
+                    Padding="10,4">
+              <TextBlock x:Name="StatusBadgeText"
+                         Foreground="{StaticResource InfoTextBrush}"
+                         FontWeight="SemiBold"
+                         Text="Ready" />
+            </Border>
+            <ProgressBar x:Name="BusyProgressBar"
+                         Width="180"
+                         Height="6"
+                         Margin="16,13,0,0"
+                         IsIndeterminate="True"
+                         Visibility="Collapsed" />
+          </StackPanel>
+
+          <TextBlock x:Name="StatusTitleTextBlock"
+                     Grid.Row="1"
+                     Margin="0,18,0,0"
+                     FontSize="22"
+                     FontWeight="SemiBold"
+                     Text="Start by validating the connection." />
+
+          <TextBlock x:Name="StatusBodyTextBlock"
+                     Grid.Row="2"
+                     Margin="0,12,0,0"
+                     Foreground="{StaticResource SubtleBrush}"
+                     FontSize="14"
+                     TextWrapping="Wrap"
+                     Text="The dialog will resolve the target environment, force interactive sign-in, and run a read-only WhoAmI check before releasing the context." />
+
+          <Border x:Name="SolutionSelectionPanel"
+                  Grid.Row="3"
+                  Margin="0,18,0,0"
+                  Padding="16"
+                  Background="#F8FAFC"
+                  BorderBrush="#D7DFEA"
+                  BorderThickness="1"
+                  CornerRadius="16"
+                  Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock FontSize="16"
+                         FontWeight="SemiBold"
+                         Text="Working Solution" />
+              <TextBlock Margin="0,6,0,0"
+                         Foreground="{StaticResource SubtleBrush}"
+                         TextWrapping="Wrap"
+                         Text="Choose the exact solution before giving Codex the live context. This keeps versioning, patch handling, and follow-up changes anchored to one known solution." />
+              <ComboBox x:Name="SolutionComboBox"
+                        DisplayMemberPath="DisplayLabel"
+                        SelectionChanged="SolutionComboBox_SelectionChanged" />
+              <TextBlock x:Name="SolutionSelectionStatusTextBlock"
+                         Margin="0,10,0,0"
+                         Foreground="{StaticResource SubtleBrush}"
+                         TextWrapping="Wrap"
+                         Text="Validate the connection to load solutions." />
+            </StackPanel>
+          </Border>
+
+          <TextBox x:Name="DiagnosticsTextBox"
+                   Grid.Row="4"
+                   Margin="0,18,0,0"
+                   FontFamily="Consolas"
+                   FontSize="12"
+                   IsReadOnly="True"
+                   TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   AcceptsReturn="True"
+                   Background="#0F172A"
+                   Foreground="#D6E2FF"
+                   MinHeight="220" />
+        </Grid>
+      </Border>
+
+      <StackPanel Grid.Row="4"
+                  Orientation="Horizontal"
+                  HorizontalAlignment="Right">
+        <Button x:Name="ValidateButton"
+                Click="ValidateButton_Click"
+                Background="{StaticResource AccentBrush}"
+                BorderBrush="{StaticResource AccentBorderBrush}"
+                Foreground="White"
+                Content="Validate Connection" />
+        <Button x:Name="UseContextButton"
+                Click="UseContextButton_Click"
+                Background="#111827"
+                BorderBrush="#111827"
+                Foreground="White"
+                Content="Use Context"
+                IsEnabled="False" />
+        <Button Click="CancelButton_Click"
+                Background="White"
+                BorderBrush="#CBD5E1"
+                Foreground="#0F172A"
+                Margin="0"
+                Content="Cancel" />
+      </StackPanel>
+    </Grid>
+  </ScrollViewer>
+</Window>

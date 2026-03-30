@@ -1,0 +1,36 @@
+<svg width="1280" height="1280" viewBox="0 0 1280 1280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pp-top-main" x1="338" y1="96" x2="1048" y2="452" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#26B3A7"/>
+      <stop offset="1" stop-color="#1467A6"/>
+    </linearGradient>
+    <linearGradient id="pp-bottom-main" x1="133" y1="555" x2="828" y2="1000" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#87DD77"/>
+      <stop offset="0.3" stop-color="#38BA8A"/>
+      <stop offset="1" stop-color="#139493"/>
+    </linearGradient>
+    <linearGradient id="pp-edge-shadow" x1="120" y1="801" x2="528" y2="842" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0C4C33" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#0C4C33" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="soft-drop" x="80" y="40" width="1100" height="1020" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="8" dy="18" stdDeviation="12" flood-color="#1A1A1A" flood-opacity="0.25"/>
+    </filter>
+    <filter id="text-shadow" x="310" y="1040" width="714" height="148" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#0D8CA1" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="1280" fill="white"/>
+
+  <g filter="url(#soft-drop)">
+    <path d="M470 72H962C1052.02 72 1125 145.037 1125 235.15C1125 325.263 1052.02 398.3 962 398.3H813.652C757.525 398.3 705.948 429.236 679.418 478.742L556.445 708.194C545.62 728.399 524.569 741 501.648 741C474.23 741 452 718.763 452 691.331C452 683.799 453.742 676.369 457.092 669.624L600.159 381.491C630.415 320.562 692.644 282.05 760.661 282.05H963C990.614 282.05 1013 259.663 1013 232.035C1013 204.408 990.614 182.02 963 182.02H365C358.785 182.02 353.707 177.008 353.626 170.793C353.544 164.462 358.669 159.3 365 159.3H394.728L470 72Z" fill="url(#pp-top-main)"/>
+    <path d="M340.978 526.973H868.5C958.545 526.973 1031.53 599.96 1031.53 690.004C1031.53 780.048 958.545 853.035 868.5 853.035H555.668C484.106 853.035 418.76 893.464 386.814 957.515L231.702 1268.57C219.885 1292.27 195.672 1307.28 169.186 1307.28C143.119 1307.28 122 1286.16 122 1260.09C122 1252.34 123.898 1244.72 127.529 1237.88L290.682 930.638C333.563 849.879 417.595 799.442 508.986 799.442H817C847.376 799.442 872 774.819 872 744.442C872 714.066 847.376 689.442 817 689.442H361.304C328.169 689.442 306.02 655.255 319.568 625.016L340.978 526.973Z" fill="url(#pp-bottom-main)"/>
+    <path d="M118 798C145.034 752.297 184.929 729.445 237.686 729.445H525L398.208 982H232.358L118 798Z" fill="url(#pp-edge-shadow)"/>
+  </g>
+
+  <g filter="url(#text-shadow)">
+    <text x="352" y="1142" fill="#157F8E" stroke="white" stroke-width="6" font-family="Georgia, 'Times New Roman', serif" font-size="88" font-weight="700">
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,38 @@
+{
+  "repoSolutionName": "Contoso.XRM.Sample",
+  "mainSolutionUniqueName": "ContosoCore",
+  "publisherPrefix": "contoso",
+  "managedStrategy": "both",
+  "repoArchetype": "layered-dotnet-dataverse",
+  "solutionSourceModel": "hybrid-code-and-supporting-solution-source",
+  "namespaceRoot": "Contoso.XRM.Sample",
+  "localSupportingSolutions": [
+    "Contoso_PCF"
+  ],
+  "criticalPluginSteps": [
+    "Account Create"
+  ],
+  "flowGuardSpecPath": ".codex/power-platform.flow-guards.json",
+  "intentionallyDisabledPluginSteps": [
+    {
+      "name": "Account Archive",
+      "pluginTypeName": "Contoso.XRM.Sample.Plugins.AccountPlugin",
+      "messageName": "Update",
+      "primaryEntityLogicalName": "account",
+      "stage": "PreOperation",
+      "mode": "Synchronous"
+    }
+  ],
+  "sourceAreas": {
+    "business": "Contoso.XRM.Sample.Business",
+    "data": "Contoso.XRM.Sample.Data",
+    "supplementalData": "Data",
+    "plugins": "Contoso.XRM.Sample.Plugins",
+    "webResources": "WebResources",
+    "pcf": "Contoso.XRM.Sample.PCF",
+    "wordTemplates": "Word Templates",
+    "dataverse": "Dataverse",
+    "reference": "Reference",
+    "tools": "Tools"
+  }
+}

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Zeta.App.Plugins</AssemblyName>
+    <RootNamespace>Zeta.App.Plugins</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\\Zeta.App.Data\\Zeta.App.Data.csproj" />
+  </ItemGroup>
+</Project>
