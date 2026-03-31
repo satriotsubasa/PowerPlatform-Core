@@ -70,3 +70,60 @@ For a repo matching this pattern, a full task may involve:
 4. building the affected project
 5. pushing or importing the changed artifact into Dataverse
 6. using maker portal automation only for the remaining design-only steps
+
+## Layered Repo with Code Apps
+
+A layered repo can include a `CodeApp/` folder at the same level as the other project areas. This is the pattern for repos that deliver both a model-driven app and one or more Power Apps Code Apps from the same solution.
+
+```text
+<Solution>.Business/
+<Solution>.Plugins/
+<Solution>.Data/
+WebResources/
+<Solution>.PCF/
+Word Templates/
+Dataverse/
+CodeApp/
+  ├── <AppName1>/          ← full code app: power.config.json, package.json, src/
+  ├── <AppName2>/
+  └── <AppName3>/
+<Solution>.sln
+README.md
+```
+
+### Rules for the CodeApp/ area
+
+- Treat each immediate subdirectory of `CodeApp/` as a separate deployable code app. Each must contain its own `power.config.json` (written by `npx power-apps init`) and `package.json`.
+- Do not merge multiple apps into a single subfolder. One subfolder = one code app = one Power Apps app record.
+- `CodeApp/` is not a Dataverse solution component — it is a hosting unit deployed separately via `npx power-apps push` or `pac code push`. Its ALM path is: push to dev environment → add to solution in maker portal → promote via pipelines.
+- The code app is a full Single-Page Application (SPA). It connects to Dataverse through generated service files under `src/generated/services/`, not through plug-ins or web resources.
+- Do not hand-edit generated files in `src/generated/`. Regenerate them with `pac code add-data-source` when the Dataverse table schema changes.
+- Code apps require **Power Apps Premium** licenses for end-users. Confirm this before delivery planning.
+- Code apps in this repo coexist with the model-driven app. They are independent apps sharing the same Dataverse environment — they are not embedded inside the model-driven app unless explicitly embedded via iframe.
+
+### Detecting this pattern
+
+`scripts/discover_context.py` detects:
+- `CodeApp/` as a recognised repo area (shown in `repo_areas`)
+- each `power.config.json` found inside as a separate entry in `code_apps`, including display name, environment ID, and app ID
+
+When discovery returns multiple `code_apps` entries, list them and ask the user which app to target before running any push or build operation.
+
+### Pushing all apps at once
+
+```powershell
+# Build and push all apps under CodeApp/ in sequence
+python scripts/push_code_app.py --path .\CodeApp --all
+
+# Dry run first to confirm which apps will be pushed
+python scripts/push_code_app.py --path .\CodeApp --all --dry-run
+
+# Target a specific solution (pac CLI)
+python scripts/push_code_app.py --path .\CodeApp --all --cli pac --solution-name MySolution
+```
+
+### Pushing a single app
+
+```powershell
+python scripts/push_code_app.py --path .\CodeApp\CustomerPortal
+```

@@ -96,6 +96,10 @@ PROJECT_PROFILE_PATHS = (
 )
 GENERIC_AREA_NAMES = {
     "business",
+    "codeapp",
+    "codeapps",
+    "code app",
+    "code apps",
     "data",
     "plugins",
     "webresources",
@@ -109,6 +113,7 @@ GENERIC_AREA_NAMES = {
 }
 REPO_AREA_KEYS = (
     "business",
+    "codeapp",
     "data",
     "supplemental_data",
     "plugins",
