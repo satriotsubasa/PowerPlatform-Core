@@ -188,6 +188,7 @@ def main() -> int:
         "pcf_controls": [],
         "pipeline_files": [],
         "deployment_settings": [],
+        "code_apps": [],
         "pac_auth_profiles": [],
         "repo_areas": detect_repo_areas(scan_root),
         "project_profile": load_project_profile(scan_root),
@@ -223,6 +224,10 @@ def main() -> int:
             parsed = parse_pipeline_file(path, scan_root)
             if parsed:
                 artifacts["pipeline_files"].append(parsed)
+        elif name == "power.config.json":
+            parsed = parse_code_app_config(path, scan_root)
+            if parsed:
+                artifacts["code_apps"].append(parsed)
         elif name.endswith(".json"):
             parsed = parse_deployment_settings(path, scan_root)
             if parsed:
@@ -606,6 +611,27 @@ def parse_pipeline_file(path: Path, root: Path) -> dict[str, object] | None:
         "publisher_prefixes": publisher_prefixes,
         "environment_urls": environments,
         "managed_strategy_hints": dedupe(managed_strategy_hints),
+    }
+
+
+def parse_code_app_config(path: Path, root: Path) -> dict[str, object] | None:
+    """Parse a power.config.json file and return code app metadata."""
+    text = safe_read_text(path, max_bytes=200_000)
+    if not text:
+        return None
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    # Require at least one known code app field to avoid false positives
+    if not any(k in data for k in ("displayName", "environmentId", "appId", "name")):
+        return None
+    return {
+        "path": str(path),
+        "relative_path": relative_path(path, root),
+        "display_name": data.get("displayName") or data.get("name", ""),
+        "environment_id": data.get("environmentId", ""),
+        "app_id": data.get("appId", ""),
     }
 
 

@@ -16,6 +16,7 @@ It is intentionally more comprehensive than the installed skill README. The inst
 The `Type` column is a rough capability family, not a strict architectural boundary. It is there to make the matrix easier to scan by area.
 
 - `Auth`
+- `Code App`
 - `Continuity`
 - `Core`
 - `Custom API`
@@ -38,6 +39,9 @@ The `Type` column is a rough capability family, not a strict architectural bound
 
 | Type | Capability | Current status | Packaging category | Notes |
 | --- | --- | --- | --- | --- |
+| Code App | Code app build and push helper | Implemented | Category 1 | `scripts/push_code_app.py` wraps `npx power-apps push` (npm CLI, recommended) and `pac code push` (legacy). Runs `npm run build` before push, supports `--solution-name` for solution targeting, and provides `--dry-run` mode. Reads `power.config.json` for app display name and environment context. |
+| Code App | Code app context detection | Implemented | Infrastructure | `scripts/discover_context.py` now detects `power.config.json` files and surfaces them in the `code_apps` key of the discovery output, including display name, environment ID, and app ID. |
+| Code App | Code apps working reference | Implemented | Infrastructure | `references/code-apps.md` covers architecture, Vite scaffold, npm CLI and pac CLI workflows, Dataverse CRUD patterns (generated model/service files), ALM (push → solution → pipeline), admin environment setup, licensing, monitoring, CSP, managed platform capabilities, and known limitations. |
 | Auth | Forced-popup auth and solution selection dialog | Implemented | Infrastructure | `scripts/auth_context.py` and `tools/CodexPowerPlatform.AuthDialog` collect the target URL, force interactive sign-in, load selectable solutions, and require the user to choose the working solution before live context is released. |
 | Auth | PAC-target mismatch warning | Implemented | Infrastructure | `scripts/powerplatform_common.py` now warns when the requested live environment URL does not match the active PAC profile target before live helpers continue. |
 | Continuity | README plus handoff continuity mechanism | Implemented | Infrastructure | Core guidance preserves repo-root `README.md`, uses `CODEX_HANDOFF.md` as the running state file, and routes continuity behavior through `references/thread-continuity.md`. |

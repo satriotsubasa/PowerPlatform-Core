@@ -49,6 +49,7 @@ Core currently supports:
 - document-generation inspection and planning
 - solution deployment and delivery validation
 - coordinated multi-step execution through `scripts/apply_requirement_spec.py`
+- Power Apps Code App build and push via `scripts/push_code_app.py`, with automatic `power.config.json` detection in `scripts/discover_context.py`
 
 For the fuller maintainer-oriented capability breakdown that used to live in the long README, see [docs/capability-matrix.md](docs/capability-matrix.md).
 
