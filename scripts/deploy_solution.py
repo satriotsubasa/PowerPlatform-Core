@@ -8,6 +8,7 @@ from pathlib import Path
 
 from powerplatform_common import (
     infer_unpacked_solution_folder,
+    load_deployment_defaults,
     repo_root,
     resolve_environment_url,
     run_command,
@@ -52,12 +53,15 @@ def main() -> int:
     parser.add_argument("--change-summary", help="Short human-readable summary of what is being deployed.")
     parser.add_argument("--lock-retries", type=int, default=20, help="Number of retry waits for Dataverse import or publish locks before failing.")
     parser.add_argument("--lock-wait-seconds", type=int, default=30, help="Seconds to wait between Dataverse import or publish lock retries.")
+    parser.add_argument("--max-runtime-seconds", type=int, help="Hard local runtime ceiling for the import command and lock-retry window.")
     parser.add_argument("--skip-pack", action="store_true")
     parser.add_argument("--skip-import", action="store_true")
     parser.add_argument("--output", help="Optional JSON output path.")
     args = parser.parse_args()
 
     repo = repo_root(Path(args.repo_root))
+    deployment_defaults = load_deployment_defaults(repo)
+    resolved_max_runtime_seconds = resolve_solution_import_timeout(args.max_runtime_seconds, deployment_defaults)
     solution_folder = Path(args.solution_folder).resolve() if args.solution_folder else infer_unpacked_solution_folder(repo)
     zipfile = Path(args.zipfile).resolve() if args.zipfile else (repo / "out" / "solution.zip")
     zipfile.parent.mkdir(parents=True, exist_ok=True)
@@ -136,6 +140,7 @@ def main() -> int:
             cwd=repo,
             retries=args.lock_retries,
             wait_seconds=args.lock_wait_seconds,
+            max_runtime_seconds=resolved_max_runtime_seconds,
         )
         executed_steps.append("import")
 
@@ -147,10 +152,22 @@ def main() -> int:
             "package_type": args.package_type,
             "change_scope": args.change_scope,
             "executed_steps": executed_steps,
+            "max_runtime_seconds": resolved_max_runtime_seconds,
         },
         args.output,
     )
     return 0
+
+
+def resolve_solution_import_timeout(configured_timeout: int | None, deployment_defaults: dict[str, object]) -> int:
+    if configured_timeout is not None:
+        return configured_timeout
+    timeouts = deployment_defaults.get("timeouts")
+    if isinstance(timeouts, dict):
+        value = timeouts.get("solutionImportSeconds")
+        if isinstance(value, int) and value > 0:
+            return value
+    return 900
 
 
 def enforce_deployment_scope_guard(

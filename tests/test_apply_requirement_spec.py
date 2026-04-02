@@ -109,6 +109,61 @@ class ApplyRequirementSpecTests(unittest.TestCase):
             )
         )
 
+    def test_build_deployment_preflight_marks_manual_only_surface_and_timeout_budget(self) -> None:
+        steps = [
+            {
+                "type": "push-plugin",
+                "name": "push-plugin-1",
+                "options": {
+                    "pluginId": "11111111-1111-1111-1111-111111111111",
+                },
+            }
+        ]
+
+        deployment_preflight = apply_requirement_spec.build_deployment_preflight(
+            steps=steps,
+            deployment_defaults={
+                "manualOnlySurfaces": ["plugin"],
+                "preferredDeploymentPaths": {"plugin": "push-plugin"},
+                "timeouts": {"pluginPushSeconds": 300},
+            },
+        )
+
+        self.assertTrue(deployment_preflight["blocked"])
+        self.assertEqual(deployment_preflight["steps"][0]["assetType"], "plugin")
+        self.assertEqual(deployment_preflight["steps"][0]["chosenPrimitive"], "push-plugin")
+        self.assertEqual(deployment_preflight["steps"][0]["timeoutBudgetSeconds"], 300)
+        self.assertTrue(deployment_preflight["steps"][0]["manualOnly"])
+        self.assertIn("manual", deployment_preflight["steps"][0]["fallbackMessage"].lower())
+
+    def test_run_push_plugin_helper_passes_timeout_and_skip_flags(self) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_run_command(command: list[str], *, cwd: Path | None = None, check: bool = True) -> object:
+            captured["command"] = command
+            return type("Result", (), {"stdout": '{"success": true}'})()
+
+        with unittest.mock.patch.object(apply_requirement_spec, "run_command", side_effect=fake_run_command):
+            apply_requirement_spec.run_push_plugin_helper(
+                {
+                    "pluginId": "11111111-1111-1111-1111-111111111111",
+                    "maxRuntimeSeconds": 180,
+                    "skipStepStateVerification": True,
+                    "skipStepStateReconcile": True,
+                },
+                repo=Path.cwd(),
+                connection={"environment_url": "https://contoso.crm.dynamics.com", "username": "user@contoso.com"},
+                auth_flow="interactive",
+                force_prompt=False,
+                verbose=False,
+            )
+
+        self.assertIn("--max-runtime-seconds", captured["command"])
+        timeout_index = captured["command"].index("--max-runtime-seconds") + 1
+        self.assertEqual(captured["command"][timeout_index], "180")
+        self.assertIn("--skip-step-state-verification", captured["command"])
+        self.assertIn("--skip-step-state-reconcile", captured["command"])
+
 
 if __name__ == "__main__":
     unittest.main()

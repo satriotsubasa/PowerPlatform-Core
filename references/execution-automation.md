@@ -14,6 +14,20 @@ Prefer this order:
 
 Do not jump to browser automation when a repo-backed, API-backed, or CLI-backed path exists. Browser automation is opt-in fallback only.
 
+## Deployment Preflight Discipline
+
+Before live deployment, classify the current step explicitly:
+
+- asset type
+- chosen deployment primitive
+- whether targeted delivery is supported
+- whether the surface is configured as manual-only or high-risk
+- timeout budget
+- fallback path
+
+Prefer `scripts/apply_requirement_spec.py` when the work spans multiple steps. Its `deploymentPreflight` output is the decision gate for whether Codex should proceed, stop, or escalate.
+If the preflight marks a surface as manual-only, stop there instead of trying blind headless retries.
+
 ## What "Fully Execute" Means
 
 If the user asks for full execution, aim to:
@@ -48,6 +62,7 @@ Choose the narrowest reviewed deployment primitive that matches the actual chang
 - Require explicit user approval before broadening a targeted-component or solution-subset change into a whole-solution import.
 - In shared unmanaged environments, treat whole-solution import as high risk because it can overwrite unrelated live maker work. Block that escalation unless the user explicitly approves the broader blast radius.
 - When broad import is explicitly approved, explain why the narrower helper path was insufficient and summarize the expected blast radius before running the import.
+- Keep bounded waits explicit. If a plug-in push or solution import is still blocked after its timeout budget, stop and surface the blocker instead of continuing silent retries.
 
 ## Repo-Owned Deploy Entry Points
 
@@ -67,6 +82,18 @@ Before using one, confirm:
 - it is reviewable enough that you can explain what it will do
 
 If the repo does not provide a safe deploy entry point, fall back to the generic helper stack and official tools in this skill.
+
+## Reporting Expectations
+
+When Codex is executing live work, report these explicitly instead of silently polling:
+
+- current command or primitive
+- expected duration class
+- timeout budget
+- current blocker
+- next fallback
+
+For long solution imports, distinguish between “still waiting on Dataverse-side import work” and “still trying local execution”.
 
 ## Area-Specific Execution
 
@@ -158,6 +185,7 @@ If the repo does not provide a safe deploy entry point, fall back to the generic
 - this helper can validate plug-in builds, PCF builds, wrapper-solution artifacts, Word Templates, local solution pack or checker runs, and optional live read-only Dataverse connectivity
 - use it to reduce environment risk before `deploy_solution.py`, `register_plugin_*`, `push_plugin.py`, or `deploy_pcf.py`
 - when `deploy_solution.py` or `deploy_pcf.py` hits a Dataverse import or publish lock, prefer waiting and retrying within the helper's retry window instead of skipping the step immediately
+- if the helper exhausts its timeout budget, stop and escalate instead of improvising a longer retry chain without user approval
 
 ## Deployment Closeout
 

@@ -1,6 +1,6 @@
 # CODEX Handoff
 
-Last updated: 2026-03-29
+Last updated: 2026-04-03
 
 ## Purpose
 
@@ -53,6 +53,8 @@ Important current decisions:
 - Surface selection routes through `references/execution-surface-guide.md`.
 - Live-affecting work routes through `references/verification-and-recovery.md`.
 - Core auto-discovers overlay extensions at runtime and suggests them when relevant.
+- Project profiles can now carry generic `deploymentDefaults` for timeout budgets, manual-only surfaces, preferred deployment primitives, plug-in step-state defaults, and typed row-write coercion.
+- `apply_requirement_spec.py` now emits a separate `deploymentPreflight` block and can stop early when a repo marks a surface as manual-only.
 
 ## Overlay Relationship
 

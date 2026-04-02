@@ -53,16 +53,26 @@ def run_command(
     *,
     cwd: Path | None = None,
     check: bool = True,
+    timeout_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     resolved_args = list(args)
     resolved_args[0] = resolve_executable(args[0])
-    completed = subprocess.run(
-        resolved_args,
-        cwd=str(cwd) if cwd else None,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-    )
+    try:
+        completed = subprocess.run(
+            resolved_args,
+            cwd=str(cwd) if cwd else None,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        timeout_message = (
+            f"Command timed out after {timeout_seconds} second(s): {' '.join(args)}\n"
+            f"STDOUT:\n{exc.stdout or ''}\n"
+            f"STDERR:\n{exc.stderr or ''}"
+        )
+        raise RuntimeError(timeout_message) from exc
     if check and completed.returncode != 0:
         message = (
             f"Command failed ({completed.returncode}): {' '.join(args)}\n"
@@ -79,12 +89,25 @@ def run_command_with_dataverse_lock_retry(
     cwd: Path | None = None,
     retries: int = 20,
     wait_seconds: int = 30,
+    max_runtime_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     attempts = max(1, retries + 1)
     last_completed: subprocess.CompletedProcess[str] | None = None
+    start_time = time.monotonic()
+    runtime_budget_exhausted = False
 
     for attempt in range(1, attempts + 1):
-        completed = run_command(args, cwd=cwd, check=False)
+        remaining_runtime = remaining_runtime_seconds(start_time, max_runtime_seconds)
+        if remaining_runtime is not None and remaining_runtime <= 0:
+            runtime_budget_exhausted = True
+            break
+
+        completed = run_command(
+            args,
+            cwd=cwd,
+            check=False,
+            timeout_seconds=remaining_runtime,
+        )
         last_completed = completed
         if completed.returncode == 0:
             return completed
@@ -92,7 +115,26 @@ def run_command_with_dataverse_lock_retry(
         if not is_dataverse_lock_error(completed.stdout, completed.stderr) or attempt >= attempts:
             break
 
-        time.sleep(wait_seconds)
+        remaining_runtime = remaining_runtime_seconds(start_time, max_runtime_seconds)
+        if remaining_runtime is not None and remaining_runtime <= 0:
+            runtime_budget_exhausted = True
+            break
+
+        sleep_seconds = float(wait_seconds)
+        if remaining_runtime is not None:
+            sleep_seconds = min(sleep_seconds, remaining_runtime)
+        if sleep_seconds <= 0:
+            runtime_budget_exhausted = True
+            break
+
+        time.sleep(sleep_seconds)
+
+    if runtime_budget_exhausted:
+        raise RuntimeError(
+            f"Command failed after exceeding runtime budget of {max_runtime_seconds} second(s): {' '.join(args)}\n"
+            f"STDOUT:\n{last_completed.stdout if last_completed else ''}\n"
+            f"STDERR:\n{last_completed.stderr if last_completed else ''}"
+        )
 
     assert last_completed is not None
     raise RuntimeError(
@@ -100,6 +142,13 @@ def run_command_with_dataverse_lock_retry(
         f"STDOUT:\n{last_completed.stdout}\n"
         f"STDERR:\n{last_completed.stderr}"
     )
+
+
+def remaining_runtime_seconds(start_time: float, max_runtime_seconds: float | None) -> float | None:
+    if max_runtime_seconds is None:
+        return None
+    elapsed = time.monotonic() - start_time
+    return max_runtime_seconds - elapsed
 
 
 def is_dataverse_lock_error(stdout: str, stderr: str) -> bool:
@@ -925,18 +974,26 @@ def resolve_live_connection(
 
 
 def load_plugin_step_state_contract(target_repo_root: Path) -> list[dict[str, Any]]:
+    return build_plugin_step_state_contract_from_profile(load_project_profile_raw(target_repo_root))
+
+
+def load_project_profile_raw(target_repo_root: Path) -> dict[str, Any]:
     context = discover_repo_context(target_repo_root)
     project_profile = context.get("artifacts", {}).get("project_profile", {})
     raw_profile = project_profile.get("raw") if isinstance(project_profile, dict) else {}
-    if not isinstance(raw_profile, dict):
-        return []
-    return build_plugin_step_state_contract_from_profile(raw_profile)
+    return raw_profile if isinstance(raw_profile, dict) else {}
+
+
+def load_deployment_defaults(target_repo_root: Path) -> dict[str, Any]:
+    raw_profile = load_project_profile_raw(target_repo_root)
+    deployment_defaults = raw_profile.get("deploymentDefaults")
+    if not isinstance(deployment_defaults, dict):
+        return {}
+    return json.loads(json.dumps(deployment_defaults))
 
 
 def load_flow_guard_contract(target_repo_root: Path) -> dict[str, Any]:
-    context = discover_repo_context(target_repo_root)
-    project_profile = context.get("artifacts", {}).get("project_profile", {})
-    raw_profile = project_profile.get("raw") if isinstance(project_profile, dict) else {}
+    raw_profile = load_project_profile_raw(target_repo_root)
 
     candidate_paths: list[Path] = []
     if isinstance(raw_profile, dict):
@@ -1178,3 +1235,66 @@ def ensure_list_value(value: Any) -> list[Any]:
     if isinstance(value, list):
         return value
     return [value]
+
+
+def coerce_dataverse_row_data(
+    table_logical_name: str,
+    data: dict[str, Any],
+    deployment_defaults: dict[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(data, dict):
+        return data
+
+    typed_columns = (
+        deployment_defaults.get("dataWrites", {}).get("typedColumns")
+        if isinstance(deployment_defaults.get("dataWrites"), dict)
+        else None
+    )
+    if not isinstance(typed_columns, dict):
+        return data
+
+    table_config = find_case_insensitive_mapping_value(typed_columns, table_logical_name)
+    if not isinstance(table_config, dict):
+        return data
+
+    coerced = json.loads(json.dumps(data))
+    for configured_column, column_type in table_config.items():
+        if not isinstance(configured_column, str):
+            continue
+        actual_column = find_case_insensitive_key(coerced, configured_column)
+        if not actual_column:
+            continue
+        coerced[actual_column] = coerce_dataverse_column_value(coerced[actual_column], column_type)
+    return coerced
+
+
+def coerce_dataverse_column_value(value: Any, column_type: Any) -> Any:
+    normalized_type = normalize_typed_column_kind(column_type)
+    if normalized_type == "choice" and isinstance(value, int) and not isinstance(value, bool):
+        return {"type": "choice", "value": value}
+    return value
+
+
+def normalize_typed_column_kind(column_type: Any) -> str | None:
+    if isinstance(column_type, str):
+        text = column_type.strip()
+        return text.casefold() if text else None
+    if isinstance(column_type, dict):
+        for key in ("type", "kind", "columnType"):
+            value = column_type.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip().casefold()
+    return None
+
+
+def find_case_insensitive_key(mapping: dict[str, Any], expected_key: str) -> str | None:
+    expected = expected_key.casefold()
+    for key in mapping:
+        if isinstance(key, str) and key.casefold() == expected:
+            return key
+    return None
+
+
+def find_case_insensitive_mapping_value(mapping: dict[str, Any], expected_key: str) -> Any:
+    actual_key = find_case_insensitive_key(mapping, expected_key)
+    return mapping.get(actual_key) if actual_key is not None else None

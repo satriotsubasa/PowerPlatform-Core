@@ -15,6 +15,7 @@ from powerplatform_common import (
     canonical_plugin_step_stage,
     infer_plugin_assembly_file,
     infer_plugin_project,
+    load_deployment_defaults,
     load_plugin_step_state_contract,
     normalize_plugin_step_state,
     plugin_step_matches_selector,
@@ -54,12 +55,16 @@ def main() -> int:
     parser.add_argument("--verbose", action="store_true", help="Print Dataverse SDK auth diagnostics to stderr.")
     parser.add_argument("--skip-build", action="store_true")
     parser.add_argument("--verify-step-state", action="store_true", help="Capture step state before and after push and fail on unexpected drift.")
+    parser.add_argument("--skip-step-state-verification", action="store_true", help="Disable profile-driven step-state verification defaults for this run.")
     parser.add_argument("--step-state-spec", help="JSON object or path describing explicit desired plug-in step states.")
     parser.add_argument("--auto-reconcile-step-state", action="store_true", help="Reapply expected step enablement when verification detects drift.")
+    parser.add_argument("--skip-step-state-reconcile", action="store_true", help="Disable profile-driven step-state reconcile defaults for this run.")
+    parser.add_argument("--max-runtime-seconds", type=int, help="Hard local runtime ceiling for the plug-in push command.")
     parser.add_argument("--output", help="Optional JSON output path.")
     args = parser.parse_args()
 
     repo = repo_root(Path(args.repo_root))
+    deployment_defaults = load_deployment_defaults(repo)
     project_path = Path(args.project).resolve() if args.project else infer_plugin_project(repo)
     if not project_path.exists():
         raise RuntimeError(f"Plug-in project not found: {project_path}")
@@ -76,11 +81,15 @@ def main() -> int:
 
     explicit_contract = load_explicit_step_state_contract(args.step_state_spec)
     profile_contract = load_plugin_step_state_contract(repo)
-    should_verify = args.verify_step_state or args.auto_reconcile_step_state or bool(explicit_contract) or bool(profile_contract)
+    resolved_verify_step_state = resolve_verify_step_state(args, deployment_defaults, explicit_contract, profile_contract)
+    resolved_auto_reconcile = resolve_auto_reconcile_step_state(args, deployment_defaults)
+    if resolved_auto_reconcile:
+        resolved_verify_step_state = True
+    resolved_max_runtime_seconds = resolve_plugin_push_timeout(args.max_runtime_seconds, deployment_defaults)
 
     connection: dict[str, Any] | None = None
     before_snapshot: dict[str, Any] | None = None
-    if should_verify:
+    if resolved_verify_step_state:
         connection = resolve_live_connection(
             environment_url=args.environment_url,
             username=args.username,
@@ -115,10 +124,10 @@ def main() -> int:
         "--environment",
         push_environment_url,
     ]
-    run_command(command, cwd=repo)
+    run_command(command, cwd=repo, timeout_seconds=resolved_max_runtime_seconds)
 
     verification: dict[str, Any] | None = None
-    if should_verify:
+    if resolved_verify_step_state:
         assert connection is not None
         assert before_snapshot is not None
         after_snapshot = inspect_plugin_steps_payload(
@@ -138,7 +147,7 @@ def main() -> int:
         drift = detect_step_state_drift(expectations, after_snapshot.get("steps", []))
         reconciled = None
         final_snapshot = after_snapshot
-        if drift and args.auto_reconcile_step_state:
+        if drift and resolved_auto_reconcile:
             reconcile_spec = build_reconcile_spec(args.plugin_id, args.type, expectations, drift)
             if reconcile_spec["steps"]:
                 reconciled = ensure_plugin_step_state_payload(
@@ -182,6 +191,11 @@ def main() -> int:
             "configuration": args.configuration,
             "built": not args.skip_build,
             "pushed": True,
+            "max_runtime_seconds": resolved_max_runtime_seconds,
+            "stepStateDefaults": {
+                "verifyStepState": resolved_verify_step_state,
+                "autoReconcileStepState": resolved_auto_reconcile,
+            },
             "stepStateVerification": verification,
         },
         args.output,
@@ -223,6 +237,47 @@ def load_explicit_step_state_contract(raw_value: str | None) -> list[dict[str, A
         normalized_item["desiredState"] = desired_state
         contract.append(normalized_item)
     return contract
+
+
+def resolve_verify_step_state(
+    args: argparse.Namespace,
+    deployment_defaults: dict[str, Any],
+    explicit_contract: list[dict[str, Any]],
+    profile_contract: list[dict[str, Any]],
+) -> bool:
+    if args.skip_step_state_verification:
+        return False
+    if args.verify_step_state:
+        return True
+
+    plugin_defaults = deployment_defaults.get("plugin")
+    if isinstance(plugin_defaults, dict) and plugin_defaults.get("verifyStepStateByDefault") is True:
+        return True
+
+    return bool(explicit_contract) or bool(profile_contract)
+
+
+def resolve_auto_reconcile_step_state(args: argparse.Namespace, deployment_defaults: dict[str, Any]) -> bool:
+    if args.skip_step_state_reconcile:
+        return False
+    if args.auto_reconcile_step_state:
+        return True
+
+    plugin_defaults = deployment_defaults.get("plugin")
+    if isinstance(plugin_defaults, dict) and plugin_defaults.get("autoReconcileStepStateByDefault") is True:
+        return True
+    return False
+
+
+def resolve_plugin_push_timeout(configured_timeout: int | None, deployment_defaults: dict[str, Any]) -> int:
+    if configured_timeout is not None:
+        return configured_timeout
+    timeouts = deployment_defaults.get("timeouts")
+    if isinstance(timeouts, dict):
+        value = timeouts.get("pluginPushSeconds")
+        if isinstance(value, int) and value > 0:
+            return value
+    return 300
 
 
 def inspect_plugin_steps_payload(

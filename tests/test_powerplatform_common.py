@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import subprocess
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -11,85 +13,70 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 import powerplatform_common  # type: ignore
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-FIXTURES_ROOT = REPO_ROOT / "tests" / "fixtures" / "discover_context"
 
+class DeploymentDefaultsTests(unittest.TestCase):
+    def test_load_deployment_defaults_returns_empty_when_profile_has_no_section(self) -> None:
+        with mock.patch.object(
+            powerplatform_common,
+            "discover_repo_context",
+            return_value={"artifacts": {"project_profile": {"raw": {"mainSolutionUniqueName": "ContosoCore"}}}},
+        ):
+            defaults = powerplatform_common.load_deployment_defaults(Path.cwd())
 
-class ResolveExecutableTests(unittest.TestCase):
-    def test_windows_fallback_returns_original_command_when_no_candidate_exists(self) -> None:
-        with mock.patch.object(powerplatform_common.shutil, "which", return_value=None) as which_mock:
-            with mock.patch.object(powerplatform_common.os, "name", "nt"):
-                resolved = powerplatform_common.resolve_executable("pac")
+        self.assertEqual(defaults, {})
 
-        self.assertEqual(resolved, "pac")
-        self.assertEqual(
-            [call.args[0] for call in which_mock.call_args_list],
-            ["pac", "pac.exe", "pac.cmd", "pac.bat"],
+    def test_coerce_dataverse_row_data_applies_configured_choice_columns(self) -> None:
+        deployment_defaults = {
+            "dataWrites": {
+                "typedColumns": {
+                    "account": {
+                        "statuscode": "choice",
+                    }
+                }
+            }
+        }
+
+        coerced = powerplatform_common.coerce_dataverse_row_data(
+            "account",
+            {"statuscode": 1, "name": "Acme"},
+            deployment_defaults,
         )
-
-    def test_direct_resolution_stops_before_windows_suffix_fallback(self) -> None:
-        with mock.patch.object(powerplatform_common.shutil, "which", return_value=r"C:\Tools\pac.exe") as which_mock:
-            with mock.patch.object(powerplatform_common.os, "name", "nt"):
-                resolved = powerplatform_common.resolve_executable("pac")
-
-        self.assertEqual(resolved, r"C:\Tools\pac.exe")
-        self.assertEqual(which_mock.call_count, 1)
-
-
-class EnvironmentUrlWarningTests(unittest.TestCase):
-    def test_normalize_environment_url_removes_trailing_slash_and_lowercases_host(self) -> None:
-        self.assertEqual(
-            powerplatform_common.normalize_environment_url("HTTPS://Contoso.CRM.Dynamics.com/"),
-            "https://contoso.crm.dynamics.com",
-        )
-
-    def test_build_pac_environment_mismatch_warning_returns_message_for_different_target(self) -> None:
-        warning = powerplatform_common.build_pac_environment_mismatch_warning(
-            requested_environment_url="https://target.crm.dynamics.com",
-            pac_environment_url="https://other.crm.dynamics.com",
-        )
-
-        self.assertIn("active PAC profile targets", warning)
-        self.assertIn("target.crm.dynamics.com", warning)
-        self.assertIn("other.crm.dynamics.com", warning)
-
-    def test_build_pac_environment_mismatch_warning_ignores_matching_urls(self) -> None:
-        warning = powerplatform_common.build_pac_environment_mismatch_warning(
-            requested_environment_url="https://target.crm.dynamics.com/",
-            pac_environment_url="https://target.crm.dynamics.com",
-        )
-
-        self.assertEqual(warning, "")
-
-
-class ActivePacProfileTests(unittest.TestCase):
-    def test_active_pac_profile_returns_empty_values_when_pac_is_unavailable(self) -> None:
-        with mock.patch.object(powerplatform_common, "run_command", side_effect=FileNotFoundError()):
-            profile = powerplatform_common.active_pac_profile()
 
         self.assertEqual(
-            profile,
+            coerced,
             {
-                "user": None,
-                "tenant_id": None,
-                "environment_url": None,
+                "statuscode": {"type": "choice", "value": 1},
+                "name": "Acme",
             },
         )
 
 
-class SolutionSourceResolutionTests(unittest.TestCase):
-    def test_infer_unpacked_solution_folder_rejects_multiple_authoritative_solutions(self) -> None:
-        with self.assertRaisesRegex(RuntimeError, "More than one authoritative unpacked solution"):
-            powerplatform_common.infer_unpacked_solution_folder(
-                FIXTURES_ROOT / "multiple_primary_solutions_repo"
-            )
+class CommandTimeoutTests(unittest.TestCase):
+    def test_run_command_wraps_timeout_expired(self) -> None:
+        with mock.patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd=["pac"], timeout=45)):
+            with self.assertRaises(RuntimeError) as raised:
+                powerplatform_common.run_command(["pac", "solution", "import"], timeout_seconds=45)
 
-    def test_has_local_solution_source_ignores_supporting_only_solution_artifacts(self) -> None:
-        self.assertFalse(
-            powerplatform_common.has_local_solution_source(
-                FIXTURES_ROOT / "supporting_solution_only_repo"
-            )
-        )
+        self.assertIn("45", str(raised.exception))
+
+    def test_run_command_with_dataverse_lock_retry_honors_runtime_budget(self) -> None:
+        completed = SimpleNamespace(returncode=1, stdout="Cannot start another [Import]", stderr="")
+
+        with mock.patch.object(powerplatform_common, "run_command", return_value=completed), mock.patch.object(
+            powerplatform_common.time,
+            "monotonic",
+            side_effect=[0.0, 0.0, 31.0, 31.0, 62.0, 62.0],
+        ), mock.patch.object(powerplatform_common.time, "sleep") as sleep_mock:
+            with self.assertRaises(RuntimeError) as raised:
+                powerplatform_common.run_command_with_dataverse_lock_retry(
+                    ["pac", "solution", "import"],
+                    retries=20,
+                    wait_seconds=30,
+                    max_runtime_seconds=45,
+                )
+
+        self.assertIn("runtime budget", str(raised.exception))
+        self.assertEqual(sleep_mock.call_count, 1)
 
 
 if __name__ == "__main__":

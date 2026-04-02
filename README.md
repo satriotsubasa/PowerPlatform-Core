@@ -59,6 +59,7 @@ Core guidance now also explicitly covers:
 - completion evidence and partial-failure recovery through [references/verification-and-recovery.md](references/verification-and-recovery.md)
 - immutable stable keys, source-system-qualified provenance, and honest dry-run boundaries in data operations
 - explicit deployment closeout that distinguishes repo-ready from environment-updated state
+- deployment preflight, timeout budgets, and fast-fail manual fallback through `deploymentDefaults` in the project profile and `scripts/apply_requirement_spec.py`
 
 ## Design Principles
 
@@ -71,6 +72,7 @@ Core guidance now also explicitly covers:
 - Keep changes solution-scoped.
 - Ask before delete, import, publish, register, push, or upgrade.
 - Treat project context as runtime input, not fixed skill configuration.
+- Optimize user waiting time, not just eventual task completion. Fail fast when preflight says the surface is manual-only, unsupported, or timed out.
 
 ## Repo Layout
 

@@ -17,6 +17,7 @@ from powerplatform_common import (
     ensure_dataverse_solution_reference,
     has_local_solution_source_in_context,
     authoritative_unpacked_solutions,
+    load_deployment_defaults,
     read_json_argument,
     repo_root,
     resolve_live_connection,
@@ -103,6 +104,48 @@ SPEC_PAYLOAD_STEP_TYPES = {
     "design-custom-connector",
     "plan-document-generation",
     "plan-solution-patch-merge",
+}
+
+STEP_DEPLOYMENT_METADATA = {
+    "create-table": {"assetType": "metadata", "defaultPrimitive": "create-table", "targetedDeliverySupported": True},
+    "create-field": {"assetType": "metadata", "defaultPrimitive": "create-field", "targetedDeliverySupported": True},
+    "create-lookup": {"assetType": "metadata", "defaultPrimitive": "create-lookup", "targetedDeliverySupported": True},
+    "inspect-flow": {"assetType": "flow", "defaultPrimitive": "inspect-flow", "targetedDeliverySupported": True},
+    "lint-flow": {"assetType": "flow", "defaultPrimitive": "lint-flow", "targetedDeliverySupported": True},
+    "review-flow-hardening": {"assetType": "flow", "defaultPrimitive": "review-flow-hardening", "targetedDeliverySupported": True},
+    "review-flow-connectors": {"assetType": "flow", "defaultPrimitive": "review-flow-connectors", "targetedDeliverySupported": True},
+    "create-flow": {"assetType": "flow", "defaultPrimitive": "create-flow", "targetedDeliverySupported": True},
+    "update-flow": {"assetType": "flow", "defaultPrimitive": "update-flow", "targetedDeliverySupported": True},
+    "get-flow-trigger-url": {"assetType": "flow", "defaultPrimitive": "get-flow-trigger-url", "targetedDeliverySupported": True},
+    "update-main-form": {"assetType": "metadata", "defaultPrimitive": "update-main-form", "targetedDeliverySupported": True},
+    "patch-form-xml": {"assetType": "metadata", "defaultPrimitive": "patch-form-xml", "targetedDeliverySupported": True},
+    "patch-form-ribbon": {"assetType": "metadata", "defaultPrimitive": "patch-form-ribbon", "targetedDeliverySupported": True},
+    "update-form-events": {"assetType": "metadata", "defaultPrimitive": "update-form-events", "targetedDeliverySupported": True},
+    "bind-pcf-control": {"assetType": "metadata", "defaultPrimitive": "bind-pcf-control", "targetedDeliverySupported": True},
+    "update-view": {"assetType": "metadata", "defaultPrimitive": "update-view", "targetedDeliverySupported": True},
+    "set-table-icon": {"assetType": "metadata", "defaultPrimitive": "set-table-icon", "targetedDeliverySupported": True},
+    "sync-webresource": {"assetType": "webresource", "defaultPrimitive": "sync-webresource", "targetedDeliverySupported": True},
+    "sync-webresources-batch": {"assetType": "webresource", "defaultPrimitive": "sync-webresources-batch", "targetedDeliverySupported": True},
+    "create-custom-api": {"assetType": "custom-api", "defaultPrimitive": "create-custom-api", "targetedDeliverySupported": True},
+    "inspect-environment-variable": {"assetType": "environment-variable", "defaultPrimitive": "inspect-environment-variable", "targetedDeliverySupported": True},
+    "set-environment-variable-value": {"assetType": "environment-variable", "defaultPrimitive": "set-environment-variable-value", "targetedDeliverySupported": True},
+    "inspect-security-role": {"assetType": "security-role", "defaultPrimitive": "inspect-security-role", "targetedDeliverySupported": True},
+    "create-security-role": {"assetType": "security-role", "defaultPrimitive": "create-security-role", "targetedDeliverySupported": True},
+    "update-security-role": {"assetType": "security-role", "defaultPrimitive": "update-security-role", "targetedDeliverySupported": True},
+    "register-plugin-assembly": {"assetType": "plugin", "defaultPrimitive": "register-plugin-assembly", "targetedDeliverySupported": True},
+    "register-plugin-package": {"assetType": "plugin", "defaultPrimitive": "register-plugin-package", "targetedDeliverySupported": True},
+    "inspect-plugin-steps": {"assetType": "plugin", "defaultPrimitive": "inspect-plugin-steps", "targetedDeliverySupported": True},
+    "ensure-plugin-step-state": {"assetType": "plugin", "defaultPrimitive": "ensure-plugin-step-state", "targetedDeliverySupported": True},
+    "push-plugin": {"assetType": "plugin", "defaultPrimitive": "push-plugin", "targetedDeliverySupported": True},
+    "scaffold-pcf": {"assetType": "pcf", "defaultPrimitive": "scaffold-pcf", "targetedDeliverySupported": True},
+    "version-pcf-solution": {"assetType": "pcf", "defaultPrimitive": "version-pcf-solution", "targetedDeliverySupported": True},
+    "deploy-pcf": {"assetType": "pcf", "defaultPrimitive": "deploy-pcf", "targetedDeliverySupported": True},
+    "add-solution-components": {"assetType": "metadata", "defaultPrimitive": "add-solution-components", "targetedDeliverySupported": True},
+    "validate-delivery": {"assetType": "validation", "defaultPrimitive": "validate-delivery", "targetedDeliverySupported": True},
+    "upsert-data": {"assetType": "data", "defaultPrimitive": "upsert-data", "targetedDeliverySupported": True},
+    "inspect-word-templates": {"assetType": "document-template", "defaultPrimitive": "inspect-word-templates", "targetedDeliverySupported": False},
+    "solution-version": {"assetType": "solution-version", "defaultPrimitive": "solution-version", "targetedDeliverySupported": False},
+    "deploy-solution": {"assetType": "solution-import", "defaultPrimitive": "deploy-solution", "targetedDeliverySupported": False},
 }
 
 EXPLICIT_STEP_TYPE_ALIASES = {
@@ -232,6 +275,7 @@ def main() -> int:
 
     repo = repo_root(Path(args.repo_root))
     discovery = discover_repo_context(repo)
+    deployment_defaults = load_deployment_defaults(repo)
     steps = expand_requirement_spec(requirement)
     live_required = any(step_requires_live_connection(step) for step in steps)
     use_auth_dialog = determine_auth_dialog_usage(args, requirement, live_required)
@@ -280,12 +324,17 @@ def main() -> int:
         local_solution=local_solution,
         dataverse_reference=dataverse_reference,
     )
+    deployment_preflight = build_deployment_preflight(
+        steps=steps,
+        deployment_defaults=deployment_defaults,
+    )
 
     results: list[dict[str, Any]] = []
     success = True
     failure_message: str | None = None
 
     if not args.plan_only:
+        enforce_deployment_preflight(deployment_preflight)
         child_auth_flow = determine_child_auth_flow(args.auth_flow, use_auth_dialog)
         for index, step in enumerate(steps, start=1):
             try:
@@ -326,6 +375,7 @@ def main() -> int:
         "plan_only": args.plan_only,
         "repo_root": str(repo),
         "preflight": preflight,
+        "deploymentPreflight": deployment_preflight,
         "steps": [summarize_step(step, index + 1) for index, step in enumerate(steps)],
         "results": results,
     }
@@ -655,6 +705,190 @@ def infer_deployment_change_scope(steps: list[dict[str, Any]]) -> str | None:
     if all(step_type in TARGETED_COMPONENT_STEP_TYPES for step_type in relevant_types):
         return "targeted-component"
     return None
+
+
+def build_deployment_preflight(
+    *,
+    steps: list[dict[str, Any]],
+    deployment_defaults: dict[str, Any],
+) -> dict[str, Any]:
+    preferred_paths = deployment_defaults.get("preferredDeploymentPaths", {})
+    preferred_paths = preferred_paths if isinstance(preferred_paths, dict) else {}
+    manual_only_surfaces = {
+        str(item).strip().lower()
+        for item in deployment_defaults.get("manualOnlySurfaces", [])
+        if str(item).strip()
+    }
+    timeouts = deployment_defaults.get("timeouts", {})
+    timeouts = timeouts if isinstance(timeouts, dict) else {}
+
+    preflight_steps = [
+        classify_deployment_step(
+            step=step,
+            preferred_paths=preferred_paths,
+            manual_only_surfaces=manual_only_surfaces,
+            timeouts=timeouts,
+        )
+        for step in steps
+    ]
+    blocked_steps = [item for item in preflight_steps if item["manualOnly"]]
+
+    return {
+        "blocked": bool(blocked_steps),
+        "stepCount": len(preflight_steps),
+        "blockedStepCount": len(blocked_steps),
+        "steps": preflight_steps,
+        "warnings": [item["fallbackMessage"] for item in blocked_steps],
+    }
+
+
+def classify_deployment_step(
+    *,
+    step: dict[str, Any],
+    preferred_paths: dict[str, Any],
+    manual_only_surfaces: set[str],
+    timeouts: dict[str, Any],
+) -> dict[str, Any]:
+    step_type = str(step.get("type") or "").strip().lower()
+    metadata = STEP_DEPLOYMENT_METADATA.get(
+        step_type,
+        {
+            "assetType": "unknown",
+            "defaultPrimitive": step_type or "unknown",
+            "targetedDeliverySupported": False,
+        },
+    )
+    asset_type = metadata["assetType"]
+    preferred_primitive = preferred_paths.get(asset_type)
+    chosen_primitive = str(preferred_primitive).strip() if isinstance(preferred_primitive, str) and preferred_primitive.strip() else metadata["defaultPrimitive"]
+    timeout_budget_seconds = resolve_timeout_budget_seconds(asset_type, step, timeouts)
+    manual_only = bool(
+        {
+            asset_type.lower(),
+            step_type,
+            chosen_primitive.lower(),
+        }
+        & manual_only_surfaces
+    )
+    targeted_delivery_supported = bool(metadata["targetedDeliverySupported"])
+    fallback_message = build_deployment_fallback_message(
+        step=step,
+        asset_type=asset_type,
+        chosen_primitive=chosen_primitive,
+        manual_only=manual_only,
+        targeted_delivery_supported=targeted_delivery_supported,
+        timeout_budget_seconds=timeout_budget_seconds,
+    )
+
+    return {
+        "name": step.get("name"),
+        "type": step_type,
+        "assetType": asset_type,
+        "chosenPrimitive": chosen_primitive,
+        "targetedDeliverySupported": targeted_delivery_supported,
+        "manualOnly": manual_only,
+        "highRisk": manual_only or step_type == "deploy-solution",
+        "timeoutBudgetSeconds": timeout_budget_seconds,
+        "durationClass": classify_duration(timeout_budget_seconds),
+        "fallbackMessage": fallback_message,
+    }
+
+
+def resolve_timeout_budget_seconds(asset_type: str, step: dict[str, Any], timeouts: dict[str, Any]) -> int | None:
+    option_values = step.get("options")
+    if isinstance(option_values, dict):
+        for key in ("maxRuntimeSeconds", "max_runtime_seconds"):
+            value = option_values.get(key)
+            if isinstance(value, int) and value > 0:
+                return value
+
+    timeout_key_by_asset_type = {
+        "plugin": "pluginPushSeconds",
+        "solution-import": "solutionImportSeconds",
+    }
+    timeout_key = timeout_key_by_asset_type.get(asset_type)
+    if timeout_key is None:
+        return None
+
+    configured = timeouts.get(timeout_key)
+    if isinstance(configured, int) and configured > 0:
+        return configured
+
+    if asset_type == "plugin":
+        return 300
+    if asset_type == "solution-import":
+        return 900
+    return None
+
+
+def classify_duration(timeout_budget_seconds: int | None) -> str:
+    if timeout_budget_seconds is None:
+        return "unspecified"
+    if timeout_budget_seconds <= 300:
+        return "short"
+    if timeout_budget_seconds <= 900:
+        return "medium"
+    return "long"
+
+
+def build_deployment_fallback_message(
+    *,
+    step: dict[str, Any],
+    asset_type: str,
+    chosen_primitive: str,
+    manual_only: bool,
+    targeted_delivery_supported: bool,
+    timeout_budget_seconds: int | None,
+) -> str:
+    step_type = str(step.get("type") or "").strip().lower()
+    if manual_only:
+        return (
+            f"This {asset_type} surface is configured as manual-only. "
+            f"Do not attempt headless deployment through {chosen_primitive}; switch to the maker or repo-approved manual path."
+        )
+
+    if step_type == "deploy-solution":
+        options = step.get("options", {})
+        change_scope = options.get("changeScope") if isinstance(options, dict) else None
+        if not change_scope and isinstance(options, dict):
+            change_scope = options.get("change_scope")
+        if str(change_scope or "").strip().lower() in {"targeted-component", "solution-subset"}:
+            return (
+                "This deployment broadens a narrower reviewed change into a solution import. "
+                "Stop and get explicit approval if the targeted helper path is insufficient."
+            )
+
+    if not targeted_delivery_supported:
+        return (
+            f"No targeted deployment primitive is defined for {asset_type}. "
+            "Prefer a repo-owned deploy entry point or escalate early instead of improvising longer retries."
+        )
+
+    if timeout_budget_seconds is not None:
+        return (
+            f"If {chosen_primitive} is still blocked after {timeout_budget_seconds} second(s), "
+            "stop and surface the blocker instead of continuing blind retries."
+        )
+
+    return (
+        f"If {chosen_primitive} becomes blocked, stop quickly and surface the blocker and fallback path."
+    )
+
+
+def enforce_deployment_preflight(deployment_preflight: dict[str, Any]) -> None:
+    blocked_steps = [
+        item
+        for item in deployment_preflight.get("steps", [])
+        if isinstance(item, dict) and item.get("manualOnly")
+    ]
+    if not blocked_steps:
+        return
+
+    blocked_details = "; ".join(
+        f"{item.get('name') or item.get('type')}: {item.get('fallbackMessage')}"
+        for item in blocked_steps
+    )
+    raise RuntimeError(f"Deployment preflight blocked manual-only surfaces. {blocked_details}")
 
 
 def step_requires_live_connection(step: dict[str, Any]) -> bool:
@@ -1304,10 +1538,16 @@ def run_push_plugin_helper(
         command.append("--skip-build")
     if options.get("verifyStepState"):
         command.append("--verify-step-state")
+    if options.get("skipStepStateVerification"):
+        command.append("--skip-step-state-verification")
     if options.get("autoReconcileStepState"):
         command.append("--auto-reconcile-step-state")
+    if options.get("skipStepStateReconcile"):
+        command.append("--skip-step-state-reconcile")
     if value := options.get("stepStateSpec"):
         command.extend(["--step-state-spec", json.dumps(value) if isinstance(value, (dict, list)) else str(value)])
+    if value := options.get("maxRuntimeSeconds") or options.get("max_runtime_seconds"):
+        command.extend(["--max-runtime-seconds", str(value)])
 
     if connection:
         command.extend(build_child_live_args(connection, auth_flow=auth_flow, force_prompt=force_prompt, verbose=verbose))
@@ -1466,6 +1706,8 @@ def run_upsert_data_helper(
     command = [
         sys.executable,
         str(Path(__file__).resolve().parent / "upsert_data.py"),
+        "--repo-root",
+        str(repo),
         "--mode",
         str(options.get("mode") or "upsert"),
         "--table",
@@ -1576,6 +1818,8 @@ def run_deploy_solution_helper(options: dict[str, Any], *, repo: Path, connectio
         command.extend(["--lock-retries", str(value)])
     if value := options.get("lockWaitSeconds"):
         command.extend(["--lock-wait-seconds", str(value)])
+    if value := options.get("maxRuntimeSeconds") or options.get("max_runtime_seconds"):
+        command.extend(["--max-runtime-seconds", str(value)])
 
     environment_url = options.get("environmentUrl")
     if not environment_url and connection:

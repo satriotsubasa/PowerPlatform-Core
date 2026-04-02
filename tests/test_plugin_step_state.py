@@ -253,7 +253,11 @@ class PluginStepStateScriptTests(unittest.TestCase):
                     "tenant_id": "tenant-id",
                     "solution_unique_name": "ContosoApp",
                 },
-            ), mock.patch.object(push_plugin, "run_command", return_value=SimpleNamespace(stdout="", stderr="", returncode=0)):
+            ), mock.patch.object(push_plugin, "load_deployment_defaults", return_value={}), mock.patch.object(
+                push_plugin,
+                "run_command",
+                return_value=SimpleNamespace(stdout="", stderr="", returncode=0),
+            ):
                 with mock.patch.object(
                     sys,
                     "argv",
@@ -278,6 +282,138 @@ class PluginStepStateScriptTests(unittest.TestCase):
 
             self.assertIn("Account Create", str(raised.exception))
             self.assertIn("Disabled", str(raised.exception))
+
+    def test_push_plugin_uses_profile_defaults_for_step_verification_and_timeout(self) -> None:
+        import push_plugin  # type: ignore
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            project_path = repo / "Contoso.Sample.Plugins.csproj"
+            plugin_file = repo / "bin" / "Debug" / "net462" / "Contoso.Sample.Plugins.dll"
+            plugin_file.parent.mkdir(parents=True, exist_ok=True)
+            project_path.write_text("<Project />", encoding="utf-8")
+            plugin_file.write_bytes(b"placeholder")
+
+            snapshots = [
+                {"success": True, "steps": []},
+                {"success": True, "steps": []},
+            ]
+            captured: dict[str, object] = {}
+
+            def fake_run_command(
+                args: list[str],
+                *,
+                cwd: Path | None = None,
+                check: bool = True,
+                timeout_seconds: int | None = None,
+            ) -> SimpleNamespace:
+                captured["args"] = args
+                captured["timeout_seconds"] = timeout_seconds
+                return SimpleNamespace(stdout="", stderr="", returncode=0)
+
+            with mock.patch.object(push_plugin, "inspect_plugin_steps_payload", side_effect=snapshots), mock.patch.object(
+                push_plugin,
+                "resolve_live_connection",
+                return_value={
+                    "environment_url": "https://contoso.crm.dynamics.com",
+                    "username": "user@contoso.com",
+                    "tenant_id": "tenant-id",
+                    "solution_unique_name": "ContosoApp",
+                },
+            ), mock.patch.object(
+                push_plugin,
+                "load_deployment_defaults",
+                return_value={
+                    "plugin": {
+                        "verifyStepStateByDefault": True,
+                        "autoReconcileStepStateByDefault": True,
+                    },
+                    "timeouts": {"pluginPushSeconds": 305},
+                },
+            ), mock.patch.object(push_plugin, "run_command", side_effect=fake_run_command):
+                with mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "push_plugin.py",
+                        "--repo-root",
+                        str(repo),
+                        "--project",
+                        str(project_path),
+                        "--plugin-id",
+                        "11111111-1111-1111-1111-111111111111",
+                        "--plugin-file",
+                        str(plugin_file),
+                        "--environment-url",
+                        "https://contoso.crm.dynamics.com",
+                    ],
+                ):
+                    with redirect_stdout(io.StringIO()):
+                        exit_code = push_plugin.main()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(captured["timeout_seconds"], 305)
+        self.assertEqual(captured["args"][:3], ["pac", "plugin", "push"])
+
+    def test_push_plugin_skip_flags_override_profile_defaults(self) -> None:
+        import push_plugin  # type: ignore
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            project_path = repo / "Contoso.Sample.Plugins.csproj"
+            plugin_file = repo / "bin" / "Debug" / "net462" / "Contoso.Sample.Plugins.dll"
+            plugin_file.parent.mkdir(parents=True, exist_ok=True)
+            project_path.write_text("<Project />", encoding="utf-8")
+            plugin_file.write_bytes(b"placeholder")
+
+            with mock.patch.object(push_plugin, "inspect_plugin_steps_payload") as inspect_steps, mock.patch.object(
+                push_plugin,
+                "resolve_live_connection",
+                return_value={
+                    "environment_url": "https://contoso.crm.dynamics.com",
+                    "username": "user@contoso.com",
+                    "tenant_id": "tenant-id",
+                    "solution_unique_name": "ContosoApp",
+                },
+            ), mock.patch.object(
+                push_plugin,
+                "load_deployment_defaults",
+                return_value={
+                    "plugin": {
+                        "verifyStepStateByDefault": True,
+                        "autoReconcileStepStateByDefault": True,
+                    },
+                    "timeouts": {"pluginPushSeconds": 305},
+                },
+            ), mock.patch.object(
+                push_plugin,
+                "run_command",
+                return_value=SimpleNamespace(stdout="", stderr="", returncode=0),
+            ):
+                with mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "push_plugin.py",
+                        "--repo-root",
+                        str(repo),
+                        "--project",
+                        str(project_path),
+                        "--plugin-id",
+                        "11111111-1111-1111-1111-111111111111",
+                        "--plugin-file",
+                        str(plugin_file),
+                        "--environment-url",
+                        "https://contoso.crm.dynamics.com",
+                        "--skip-step-state-verification",
+                        "--skip-step-state-reconcile",
+                    ],
+                ):
+                    with redirect_stdout(io.StringIO()):
+                        exit_code = push_plugin.main()
+
+        self.assertEqual(exit_code, 0)
+        inspect_steps.assert_not_called()
 
 
 if __name__ == "__main__":

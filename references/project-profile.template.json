@@ -13,6 +13,46 @@
     "Account Create"
   ],
   "flowGuardSpecPath": ".codex/power-platform.flow-guards.json",
+  "deploymentDefaults": {
+    "environmentAliases": {
+      "dev": "https://contoso-dev.crm.dynamics.com"
+    },
+    "defaultEnvironmentAlias": "dev",
+    "manualOnlySurfaces": [
+      "canvas-command-library",
+      "maker-app-designer"
+    ],
+    "preferredDeploymentPaths": {
+      "plugin": "push-plugin",
+      "pcf": "deploy-pcf",
+      "webresource": "sync-webresource",
+      "metadata": "targeted-helper",
+      "data": "upsert-data",
+      "flow": "update-flow",
+      "solution-import": "deploy-solution"
+    },
+    "timeouts": {
+      "pluginPushSeconds": 300,
+      "solutionImportSeconds": 900,
+      "lockRetryCount": 10,
+      "lockWaitSeconds": 30,
+      "rowRetryCount": 2
+    },
+    "plugin": {
+      "verifyStepStateByDefault": true,
+      "autoReconcileStepStateByDefault": true,
+      "pluginIds": {
+        "primaryAssembly": "11111111-1111-1111-1111-111111111111"
+      }
+    },
+    "dataWrites": {
+      "typedColumns": {
+        "account": {
+          "statuscode": "choice"
+        }
+      }
+    }
+  },
   "intentionallyDisabledPluginSteps": [
     {
       "name": "Account Archive",

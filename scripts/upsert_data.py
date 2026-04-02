@@ -6,9 +6,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from pathlib import Path
 
 from powerplatform_common import (
+    coerce_dataverse_row_data,
+    load_deployment_defaults,
     read_json_argument,
+    repo_root,
     resolve_live_connection,
     run_dataverse_tool,
 )
@@ -18,6 +22,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Create, update, or upsert Dataverse business data through the shared Dataverse SDK helper.",
     )
+    parser.add_argument("--repo-root", default=".", help="Repository root used to resolve project-profile deployment defaults.")
     parser.add_argument("--mode", choices=["create", "update", "upsert"], default="upsert")
     parser.add_argument("--table", required=True, help="Dataverse table logical name.")
     parser.add_argument("--data", required=True, help="JSON object or path to a JSON file with the columns to write.")
@@ -44,6 +49,9 @@ def main() -> int:
     if not isinstance(data, dict):
         print("ERROR: --data must resolve to a JSON object.", file=sys.stderr)
         return 2
+    repo = repo_root(Path(args.repo_root))
+    deployment_defaults = load_deployment_defaults(repo)
+    data = coerce_dataverse_row_data(args.table, data, deployment_defaults)
 
     key_text = None
     if args.key:

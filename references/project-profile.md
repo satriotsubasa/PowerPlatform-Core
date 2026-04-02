@@ -48,6 +48,46 @@ Overlay-specific project-profile examples should live in the overlay repo that o
     "Account Create"
   ],
   "flowGuardSpecPath": ".codex/power-platform.flow-guards.json",
+  "deploymentDefaults": {
+    "environmentAliases": {
+      "dev": "https://contoso-dev.crm.dynamics.com"
+    },
+    "defaultEnvironmentAlias": "dev",
+    "manualOnlySurfaces": [
+      "canvas-command-library",
+      "maker-app-designer"
+    ],
+    "preferredDeploymentPaths": {
+      "plugin": "push-plugin",
+      "pcf": "deploy-pcf",
+      "webresource": "sync-webresource",
+      "metadata": "targeted-helper",
+      "data": "upsert-data",
+      "flow": "update-flow",
+      "solution-import": "deploy-solution"
+    },
+    "timeouts": {
+      "pluginPushSeconds": 300,
+      "solutionImportSeconds": 900,
+      "lockRetryCount": 10,
+      "lockWaitSeconds": 30,
+      "rowRetryCount": 2
+    },
+    "plugin": {
+      "verifyStepStateByDefault": true,
+      "autoReconcileStepStateByDefault": true,
+      "pluginIds": {
+        "primaryAssembly": "11111111-1111-1111-1111-111111111111"
+      }
+    },
+    "dataWrites": {
+      "typedColumns": {
+        "account": {
+          "statuscode": "choice"
+        }
+      }
+    }
+  },
   "intentionallyDisabledPluginSteps": [
     {
       "name": "Account Archive",
@@ -84,6 +124,16 @@ Overlay-specific project-profile examples should live in the overlay repo that o
 - `criticalPluginSteps`: optional step selectors that must stay enabled after plug-in push or registration work. A simple string matches by step `name`; an object can match by `name`, `pluginTypeName`, `messageName`, `primaryEntityLogicalName`, `stage`, or `mode`.
 - `intentionallyDisabledPluginSteps`: optional step selectors that should remain disabled even after registration or push flows. Use the same selector shape as `criticalPluginSteps`.
 - `flowGuardSpecPath`: optional relative path to a repo-owned flow-guard contract. If omitted, Core will look for `.codex/power-platform.flow-guards.json` and then `power-platform.flow-guards.json`.
+- `deploymentDefaults`: optional deploy-orchestration hints used by Core helpers and `apply_requirement_spec.py` to classify live work earlier and stop faster when the preferred headless path is weak or blocked.
+- `deploymentDefaults.environmentAliases`: optional alias-to-environment map for repo-owned deploy wrappers or project guidance.
+- `deploymentDefaults.defaultEnvironmentAlias`: optional default alias to mention in repo guidance.
+- `deploymentDefaults.manualOnlySurfaces`: optional list of surfaces that should fail fast to a manual fallback instead of spending time on headless retries. Match by asset type, primitive name, or repo vocabulary.
+- `deploymentDefaults.preferredDeploymentPaths`: optional asset-type to primitive map that tells Core which path the repo prefers for `plugin`, `pcf`, `webresource`, `metadata`, `data`, `flow`, or `solution-import`.
+- `deploymentDefaults.timeouts`: optional timeout defaults. Core currently reads `pluginPushSeconds` and `solutionImportSeconds` directly and preserves the other keys as repo guidance for wrapper scripts.
+- `deploymentDefaults.plugin.verifyStepStateByDefault`: optional default that makes `push_plugin.py` verify plug-in step state even when the caller did not pass `--verify-step-state`.
+- `deploymentDefaults.plugin.autoReconcileStepStateByDefault`: optional default that makes `push_plugin.py` reconcile drift automatically unless the caller opts out.
+- `deploymentDefaults.plugin.pluginIds`: optional repo-owned identifiers for deploy wrappers or local conventions. Core keeps this generic and does not infer meaning beyond “repo-known IDs”.
+- `deploymentDefaults.dataWrites.typedColumns`: optional table and column map for auto-coercing plain integer values into typed Dataverse payloads, such as `{ "type": "choice", "value": 1 }`, when the repo knows a column must be written as a typed choice.
 
 ## Operating Model
 
@@ -91,6 +141,9 @@ With a project profile in place:
 
 - plug-in work still comes from `*.Business`, `*.Plugins`, and `*.Data`
 - plug-in registration defaults can inherit expected enabled or disabled step state from `criticalPluginSteps` and `intentionallyDisabledPluginSteps`
+- deployment orchestration can classify the asset type, preferred primitive, timeout budget, and fallback path before attempting live execution
+- plug-in push can inherit default step-state verification and reconcile behavior from `deploymentDefaults.plugin`
+- row-write helpers can coerce configured typed columns automatically from `deploymentDefaults.dataWrites.typedColumns`
 - critical flows can inherit semantic deployment checks from `flowGuardSpecPath` or the default flow-guard file paths
 - web resource work still comes from `WebResources`
 - PCF work still comes from `*.PCF`
