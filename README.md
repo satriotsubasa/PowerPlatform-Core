@@ -1,8 +1,8 @@
 # PowerPlatform-Core
 
-General-purpose Power Platform and Dataverse skill runtime for code-first, repo-backed execution in coding-agent workflows.
+PowerPlatform-Core is a coding-agent skill for Microsoft Power Platform and Dataverse development. Type or ask for `$powerplatform-core` in Codex when you want an agent to read a repo, understand model-driven app and solution structure, and safely build, validate, and deliver source-controlled changes such as plug-ins, PCF controls, web resources, form metadata, RibbonDiffXml, solution-aware flows, Dataverse schema, and configuration data.
 
-This skill is designed to maximize source-controlled, reviewable, testable, and maintainable execution. When a reliable code, metadata, or headless automation path exists, prefer it over portal-first or designer-first workflows.
+It turns Power Platform work into a repo-first development workflow: discover the project shape, choose the right implementation surface, make reviewable code or metadata changes, run a live mutation preflight, and deploy only through an approved targeted path unless the user explicitly accepts a broader blast radius.
 
 This repository is the public, repo-agnostic base skill. It is meant to work across unfamiliar Power Platform and Dataverse repos, including:
 
@@ -12,6 +12,14 @@ This repository is the public, repo-agnostic base skill. It is meant to work acr
 - sparse repos with little or no existing structure
 
 Opinionated house conventions belong in overlay repos, not here.
+
+## How It Works
+
+1. It can discover repo context from `.sln` files, `WebResources/`, `Dataverse/`, `*.Plugins`, `*.Data`, PCF projects, solution XML, project profiles, and PAC context when needed.
+2. It selects the development surface: client script, plug-in, custom API, PCF, form metadata, RibbonDiffXml, flow, Dataverse schema, config data, or solution ALM.
+3. It favors source-controlled edits and deterministic helpers over maker-portal memory or browser automation.
+4. It runs a live mutation preflight that names the environment, PAC profile, target solution, exact components, delivery primitive, artifact source, blast radius, timeout, and rollback path.
+5. It validates and deploys through approved targeted paths first, such as web resource sync, plug-in push, form/ribbon patch helpers, PCF wrapper deployment, flow update helpers, or keyed data upsert.
 
 ## What Core Owns
 
@@ -27,7 +35,7 @@ Core is the maintenance home for:
 Current overlay relationship:
 
 - `powerplatform-core` installs directly from this repo
-- Overlay extensions (e.g. `PowerPlatform-Overlay`) install as separate layers on top of this runtime
+- Overlay extensions install as separate layers on top of this runtime
 - House-style conventions are overlay-owned and are not shipped as Core references
 
 That overlay note is informational only. Core remains a standalone, generic skill for broader Power Platform use.
@@ -208,7 +216,7 @@ If you are working in a repo that has an accompanying overlay skill:
    .\install-skill.ps1
    ```
 
-2. Install the overlay skill (example: PowerPlatform-Overlay):
+2. Install the overlay skill from its own repo:
    ```powershell
    # From the overlay repo
    .\install-skill.ps1
@@ -216,7 +224,7 @@ If you are working in a repo that has an accompanying overlay skill:
 
 3. Use the overlay skill token instead of `$powerplatform-core`:
    ```text
-   Use $powerplatform-overlay to inspect this repo.
+   Use the overlay skill token to inspect this repo.
    ```
 
 The overlay skill bundles Core's runtime files together with its own files into a single merged skill. Core's generic capabilities are fully available through the overlay — you do not need to invoke both.
@@ -226,7 +234,7 @@ The overlay skill bundles Core's runtime files together with its own files into 
 | Situation | Use |
 |-----------|-----|
 | Any generic Power Platform / Dataverse repo | `$powerplatform-core` standalone |
-| Repo that follows a specific team's house conventions | Overlay skill (e.g. `$powerplatform-overlay`) |
+| Repo that follows a specific team's house conventions | That team's overlay skill |
 | Unfamiliar repo, no overlay available | `$powerplatform-core` standalone |
 | Building your own overlay extension | See [docs/core-overlay-architecture.md](docs/core-overlay-architecture.md) |
 

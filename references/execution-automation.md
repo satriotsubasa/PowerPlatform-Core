@@ -18,15 +18,24 @@ Do not jump to browser automation when a repo-backed, API-backed, or CLI-backed 
 
 Before live deployment, classify the current step explicitly:
 
-- asset type
+- target environment URL
+- active PAC profile when PAC is involved
+- target solution unique name and patch status
+- mutation type
+- exact components touched
 - chosen deployment primitive
+- artifact path, modified time, solution name/version, managed state, and component diff when a ZIP/package is involved
+- blast radius: targeted, component subset, patch package, or full solution
 - whether targeted delivery is supported
 - whether the surface is configured as manual-only or high-risk
 - timeout budget
-- fallback path
+- fallback and rollback path
 
 Prefer `scripts/apply_requirement_spec.py` when the work spans multiple steps. Its `deploymentPreflight` output is the decision gate for whether Codex should proceed, stop, or escalate.
 If the preflight marks a surface as manual-only, stop there instead of trying blind headless retries.
+For a single live mutation gate, use `scripts/validate_delivery.py --preflight-spec ...` or emit the same fields manually before mutating Dataverse.
+
+Do not import a package from `bin`, `Release`, `Downloads`, or old temp folders unless it was generated in the current session or explicitly selected by the user. Before package import, show the path, modified time, solution unique name, version, managed/unmanaged state, and component diff. If more than one package could be the candidate, stop and ask.
 
 ## What "Fully Execute" Means
 
@@ -63,6 +72,25 @@ Choose the narrowest reviewed deployment primitive that matches the actual chang
 - In shared unmanaged environments, treat whole-solution import as high risk because it can overwrite unrelated live maker work. Block that escalation unless the user explicitly approves the broader blast radius.
 - When broad import is explicitly approved, explain why the narrower helper path was insufficient and summarize the expected blast radius before running the import.
 - Keep bounded waits explicit. If a plug-in push or solution import is still blocked after its timeout budget, stop and surface the blocker instead of continuing silent retries.
+
+## Deployment And Pull Fast Paths
+
+Use these defaults unless the repo profile or repo-owned wrapper says otherwise:
+
+| Need | Prefer |
+| --- | --- |
+| one authored web resource | `sync_webresource.py` |
+| multiple authored web resources | `sync_webresources_batch.py` |
+| plug-in update | build, `push_plugin.py`, then step-state verification |
+| PCF update | version/build, `deploy_pcf.py`, or wrapper `Solutions` package generated now |
+| form XML update | `patch_form_xml.py`, `update_main_form.py`, or direct metadata update |
+| RibbonDiffXml update | `patch_form_ribbon.py` or direct metadata update |
+| solution-aware flow update | `inspect_flow.py`, lint/review when needed, then `update_flow.py` |
+| configuration rows | dry-run/diff first, then keyed SDK/Web API or `upsert_data.py` |
+| hydrate missing metadata reference | `ensure_dataverse_reference.py` into `Dataverse/<solution>` |
+| sync existing unpacked source from live | `pac solution sync` against the known folder |
+| unpack a reviewed artifact | `pac solution unpack` after artifact freshness and identity are shown |
+| broad solution import | fresh package, `validate_delivery.py`, explicit approval, then `deploy_solution.py` |
 
 ## Repo-Owned Deploy Entry Points
 

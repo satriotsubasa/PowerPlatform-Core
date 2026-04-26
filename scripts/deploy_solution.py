@@ -34,6 +34,8 @@ def main() -> int:
     parser.add_argument("--convert-to-managed", action="store_true", help="Convert to managed during import.")
     parser.add_argument("--run-check", action="store_true", help="Run Power Apps Checker against the packed zip before import.")
     parser.add_argument("--checker-output", help="Output directory for solution checker results.")
+    parser.add_argument("--artifact-generated-this-session", action="store_true", help="Allow an existing zip because it was generated in the current session.")
+    parser.add_argument("--explicit-artifact-selection", action="store_true", help="Allow an existing zip because the user explicitly selected this artifact.")
     parser.add_argument(
         "--change-scope",
         choices=["unknown", "targeted-component", "solution-subset", "whole-solution"],
@@ -73,6 +75,13 @@ def main() -> int:
         shared_unmanaged_environment=args.shared_unmanaged_environment,
         change_summary=args.change_summary,
     )
+    if not args.skip_import:
+        enforce_artifact_freshness(
+            zipfile=zipfile,
+            skip_pack=args.skip_pack,
+            artifact_generated_this_session=args.artifact_generated_this_session,
+            explicit_artifact_selection=args.explicit_artifact_selection,
+        )
 
     executed_steps: list[str] = []
     if not args.skip_pack:
@@ -157,6 +166,32 @@ def main() -> int:
         args.output,
     )
     return 0
+
+
+def enforce_artifact_freshness(
+    *,
+    zipfile: Path,
+    skip_pack: bool,
+    artifact_generated_this_session: bool,
+    explicit_artifact_selection: bool,
+) -> None:
+    if not skip_pack:
+        return
+    if artifact_generated_this_session or explicit_artifact_selection:
+        return
+    if zipfile.suffix.lower() != ".zip":
+        return
+
+    lower_parts = {part.lower() for part in zipfile.resolve().parts}
+    stale_location = bool({"release", "downloads", "temp"} & lower_parts) or "bin" in lower_parts
+    if not stale_location:
+        return
+
+    raise RuntimeError(
+        "Refusing to import an existing solution ZIP from a stale-prone location. "
+        "Generate the package in this session or rerun with --explicit-artifact-selection after showing "
+        f"path, timestamp, solution name/version, managed state, and component diff. Artifact: {zipfile.resolve()}"
+    )
 
 
 def resolve_solution_import_timeout(configured_timeout: int | None, deployment_defaults: dict[str, object]) -> int:

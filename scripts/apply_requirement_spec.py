@@ -1812,6 +1812,10 @@ def run_deploy_solution_helper(options: dict[str, Any], *, repo: Path, connectio
         command.extend(["--change-summary", str(value)])
     if options.get("skipPack"):
         command.append("--skip-pack")
+    if options.get("artifactGeneratedThisSession") or options.get("artifact_generated_this_session"):
+        command.append("--artifact-generated-this-session")
+    if options.get("explicitArtifactSelection") or options.get("explicit_artifact_selection"):
+        command.append("--explicit-artifact-selection")
     if options.get("skipImport"):
         command.append("--skip-import")
     if value := options.get("lockRetries"):

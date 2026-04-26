@@ -1,6 +1,6 @@
 # Core And Overlay Architecture
 
-This repository is the source of truth for the generic Power Platform skill. Overlay extensions (e.g. `PowerPlatform-Overlay`) layer on top of this generic base to add house-style conventions.
+This repository is the source of truth for the generic Power Platform skill. Overlay extensions layer on top of this generic base to add house-style conventions.
 
 ## Goal
 
@@ -75,7 +75,7 @@ Use `powerplatform-core` when:
 - there is no special house convention to preserve
 - the goal is broad public Power Platform support
 
-Use an overlay skill (e.g. `powerplatform-overlay`) when:
+Use an overlay skill when:
 
 - the repo follows a specific house convention or layered enterprise pattern
 - preserving that structure is part of the task

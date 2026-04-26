@@ -1,6 +1,6 @@
 # CODEX Handoff
 
-Last updated: 2026-04-03
+Last updated: 2026-04-27
 
 ## Purpose
 
@@ -31,7 +31,7 @@ It does not own:
 - overlay-specific prompts or examples
 - house-style reference files
 
-Overlay repos (e.g. `PowerPlatform-Overlay`) layer on top of this runtime to add house-style conventions.
+Overlay repos can layer on top of this runtime to add house-style conventions.
 
 ## Current State
 
@@ -55,6 +55,9 @@ Important current decisions:
 - Core auto-discovers overlay extensions at runtime and suggests them when relevant.
 - Project profiles can now carry generic `deploymentDefaults` for timeout budgets, manual-only surfaces, preferred deployment primitives, plug-in step-state defaults, and typed row-write coercion.
 - `apply_requirement_spec.py` now emits a separate `deploymentPreflight` block and can stop early when a repo marks a surface as manual-only.
+- Public README/SKILL wording now positions Core as a coding-agent skill for Microsoft Power Platform and Dataverse development.
+- Live mutation safety now has an explicit required preflight gate through `validate_delivery.py --preflight-spec`.
+- `deploy_solution.py` blocks stale existing solution ZIP imports from `bin`, `Release`, `Downloads`, or old temp-style paths unless the artifact was generated in-session or explicitly selected.
 
 ## Overlay Relationship
 

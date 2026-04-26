@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -16,6 +17,91 @@ FIXTURES_ROOT = REPO_ROOT / "tests" / "fixtures" / "discover_context"
 
 
 class ValidateDeliveryTests(unittest.TestCase):
+    def test_build_live_mutation_preflight_reports_required_gate_fields(self) -> None:
+        payload = validate_delivery.build_live_mutation_preflight(
+            repo=REPO_ROOT,
+            spec={
+                "environmentUrl": "https://contoso-dev.crm.dynamics.com",
+                "activePacProfile": "contoso-dev",
+                "targetSolutionUniqueName": "ContosoCore_Patch_001",
+                "mutationType": "ribbon",
+                "components": [
+                    {
+                        "type": "systemform",
+                        "name": "account:Information",
+                    }
+                ],
+                "deliveryPrimitive": "patch-form-ribbon",
+                "blastRadius": "targeted",
+                "rollbackPlan": "Restore the previous RibbonDiffXml from source control.",
+                "fallbackPath": "Stop and ask before solution import.",
+            },
+        )
+
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["mode"], "live-mutation-preflight")
+        self.assertEqual(payload["environmentUrl"], "https://contoso-dev.crm.dynamics.com")
+        self.assertEqual(payload["activePacProfile"], "contoso-dev")
+        self.assertEqual(payload["targetSolutionUniqueName"], "ContosoCore_Patch_001")
+        self.assertEqual(payload["mutationType"], "ribbon")
+        self.assertEqual(payload["deliveryPrimitive"], "patch-form-ribbon")
+        self.assertEqual(payload["blastRadius"], "targeted")
+        self.assertFalse(payload["requiresConfirmation"])
+        self.assertEqual(payload["componentCount"], 1)
+        self.assertEqual(payload["components"][0]["type"], "systemform")
+
+    def test_build_live_mutation_preflight_requires_confirmation_for_solution_import(self) -> None:
+        payload = validate_delivery.build_live_mutation_preflight(
+            repo=REPO_ROOT,
+            spec={
+                "environmentUrl": "https://contoso-dev.crm.dynamics.com",
+                "targetSolutionUniqueName": "ContosoCore",
+                "mutationType": "solution-import",
+                "components": [{"type": "webresource", "name": "contoso_/Account.js"}],
+                "deliveryPrimitive": "deploy-solution",
+                "blastRadius": "whole-solution",
+                "rollbackPlan": "Restore from exported backup package.",
+                "fallbackPath": "Use targeted sync if possible.",
+            },
+        )
+
+        self.assertTrue(payload["requiresConfirmation"])
+        self.assertIn("whole-solution", payload["confirmationReason"])
+
+    def test_build_artifact_metadata_blocks_stale_release_zip_without_selection(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            artifact = repo / "Solutions" / "bin" / "Release" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"stale package")
+
+            with self.assertRaises(RuntimeError):
+                validate_delivery.build_artifact_metadata(
+                    repo=repo,
+                    artifact_path=artifact,
+                    generated_this_session=False,
+                    explicit_user_selection=False,
+                )
+
+    def test_build_artifact_metadata_allows_explicitly_selected_zip(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            artifact = repo / "Solutions" / "bin" / "Release" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"selected package")
+
+            metadata = validate_delivery.build_artifact_metadata(
+                repo=repo,
+                artifact_path=artifact,
+                generated_this_session=False,
+                explicit_user_selection=True,
+            )
+
+        self.assertEqual(metadata["path"], str(artifact))
+        self.assertFalse(metadata["generatedThisSession"])
+        self.assertTrue(metadata["explicitUserSelection"])
+        self.assertEqual(metadata["staleRisk"], "allowed-explicit-selection")
+
     def test_run_solution_pack_check_warns_when_only_supporting_solution_source_exists(self) -> None:
         result = validate_delivery.run_solution_pack_check(
             FIXTURES_ROOT / "supporting_solution_only_repo",

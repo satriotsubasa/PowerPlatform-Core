@@ -53,6 +53,8 @@ When this structure exists:
 - keep both PCF version surfaces aligned when a wrapper solution exists: manifest version in `ControlManifest.Input.xml` and wrapper solution version in `Solutions\src\Other\Solution.xml`
 - treat `Word Templates` as source when document-generation plug-ins or placeholder mapping depend on those templates
 - treat `Dataverse` as metadata reference or working solution source, not as the owner of plug-in or web-resource code
+- when the same logical web resource appears under both `WebResources/` and `Dataverse/<solution>/WebResources/`, treat `WebResources/` as authored source and the `Dataverse/` copy as packaged/export mirror or drift evidence unless a project profile explicitly says otherwise
+- edit authored source first, then sync the mirror or live webresource through the approved helper
 - check `Tools` before inventing new helper scripts
 - keep `Reference` out of the main deployment path unless the user explicitly says that a file there is authoritative
 - do not insist on `*.cdsproj` or `Other/Solution.xml` before treating the repo as valid

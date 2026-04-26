@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,7 @@ def main() -> int:
     parser.add_argument("--zipfile", help="Optional output solution zip path used for pack/check validation.")
     parser.add_argument("--checker-output", help="Optional output directory for solution checker results.")
     parser.add_argument("--solution-name", help="Optional solution unique name to report alongside live preflight results.")
+    parser.add_argument("--preflight-spec", help="Optional JSON object or path for the live mutation preflight gate.")
     parser.add_argument("--pcf-solution-configuration", choices=["Debug", "Release"], default="Release", help="Wrapper solution build configuration used for PCF package validation.")
     parser.add_argument("--live-preflight", action="store_true", help="Run a read-only Dataverse WhoAmI validation.")
     parser.add_argument("--run-solution-check", action="store_true", help="Run Power Apps Checker after packing the solution.")
@@ -119,6 +121,13 @@ def main() -> int:
         success &= solution_check["success"]
 
     warnings = [check["message"] for check in checks if check.get("status") == "warning" and check.get("message")]
+    preflight = None
+    if args.preflight_spec:
+        preflight_spec = read_preflight_json_argument(args.preflight_spec)
+        preflight = build_live_mutation_preflight(repo=repo, spec=preflight_spec)
+        success &= bool(preflight["success"])
+        warnings.extend(preflight.get("warnings", []))
+
     payload = {
         "success": success,
         "mode": "validate-delivery",
@@ -127,6 +136,8 @@ def main() -> int:
         "checks": checks,
         "warnings": warnings,
     }
+    if preflight is not None:
+        payload["liveMutationPreflight"] = preflight
     write_json_output(payload, args.output)
     return 0 if success else 1
 
@@ -138,6 +149,178 @@ def build_discovery_summary(discovery: dict[str, Any]) -> dict[str, Any]:
         "solutionSourceModel": inferred.get("solution_source_model"),
         "inferred": inferred,
     }
+
+
+def read_preflight_json_argument(value: str) -> dict[str, Any]:
+    path = Path(value)
+    if path.exists():
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        loaded = json.loads(value)
+    if not isinstance(loaded, dict):
+        raise RuntimeError("--preflight-spec must resolve to a JSON object.")
+    return loaded
+
+
+def build_live_mutation_preflight(*, repo: Path, spec: dict[str, Any]) -> dict[str, Any]:
+    required_fields = [
+        "environmentUrl",
+        "targetSolutionUniqueName",
+        "mutationType",
+        "components",
+        "deliveryPrimitive",
+        "blastRadius",
+        "rollbackPlan",
+        "fallbackPath",
+    ]
+    missing_fields = [field for field in required_fields if is_missing(spec.get(field))]
+    components = normalize_components(spec.get("components"))
+    artifact = None
+    artifact_path = first_text_value(spec, "artifactPath", "packagePath", "zipfile")
+    if artifact_path:
+        artifact = build_artifact_metadata(
+            repo=repo,
+            artifact_path=resolve_optional_repo_path(repo, artifact_path),
+            generated_this_session=bool(spec.get("generatedThisSession")),
+            explicit_user_selection=bool(spec.get("explicitUserSelection")),
+            solution_unique_name=first_text_value(spec, "artifactSolutionUniqueName", "packageSolutionUniqueName"),
+            solution_version=first_text_value(spec, "artifactSolutionVersion", "packageSolutionVersion"),
+            managed=spec.get("artifactManaged", spec.get("packageManaged")),
+            component_diff=spec.get("componentDiff"),
+        )
+
+    blast_radius = str(spec.get("blastRadius") or "").strip().lower()
+    delivery_primitive = str(spec.get("deliveryPrimitive") or "").strip()
+    mutation_type = str(spec.get("mutationType") or "").strip()
+    requires_confirmation = blast_radius not in {"targeted", "targeted-component"} \
+        or delivery_primitive.lower() in {"deploy-solution", "solution-import"} \
+        or mutation_type.lower() == "solution-import"
+    confirmation_reason = ""
+    if requires_confirmation:
+        confirmation_reason = (
+            f"Blast radius '{blast_radius or 'unknown'}' through '{delivery_primitive or 'unknown'}' "
+            "is not a targeted live mutation path."
+        )
+
+    warnings: list[str] = []
+    if requires_confirmation:
+        warnings.append(confirmation_reason)
+    if artifact and artifact.get("staleRisk") not in {"generated-this-session", "allowed-explicit-selection", "low"}:
+        warnings.append("Package artifact requires explicit freshness review before import.")
+
+    return {
+        "success": not missing_fields,
+        "mode": "live-mutation-preflight",
+        "repoRoot": str(repo),
+        "environmentUrl": text_or_none(spec.get("environmentUrl")),
+        "activePacProfile": text_or_none(spec.get("activePacProfile")),
+        "targetSolutionUniqueName": text_or_none(spec.get("targetSolutionUniqueName")),
+        "mutationType": mutation_type or None,
+        "componentCount": len(components),
+        "components": components,
+        "deliveryPrimitive": delivery_primitive or None,
+        "artifact": artifact,
+        "blastRadius": blast_radius or None,
+        "rollbackPlan": text_or_none(spec.get("rollbackPlan")),
+        "fallbackPath": text_or_none(spec.get("fallbackPath")),
+        "requiresConfirmation": requires_confirmation,
+        "confirmationReason": confirmation_reason,
+        "missingFields": missing_fields,
+        "warnings": warnings,
+    }
+
+
+def normalize_components(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    components: list[dict[str, Any]] = []
+    for item in value:
+        if isinstance(item, dict):
+            components.append(dict(item))
+        elif isinstance(item, str) and item.strip():
+            components.append({"name": item.strip()})
+    return components
+
+
+def build_artifact_metadata(
+    *,
+    repo: Path,
+    artifact_path: Path,
+    generated_this_session: bool,
+    explicit_user_selection: bool,
+    solution_unique_name: str | None = None,
+    solution_version: str | None = None,
+    managed: Any = None,
+    component_diff: Any = None,
+) -> dict[str, Any]:
+    resolved = artifact_path.resolve()
+    if not resolved.exists():
+        raise RuntimeError(f"Artifact path does not exist: {resolved}")
+
+    stale_risk = classify_artifact_stale_risk(resolved, generated_this_session, explicit_user_selection)
+    if stale_risk == "blocked-stale-candidate":
+        raise RuntimeError(
+            "Refusing to use a candidate solution ZIP from a stale-prone location unless it was generated "
+            "in this session or explicitly selected by the user. Artifact: "
+            f"{resolved}"
+        )
+
+    stat = resolved.stat()
+    try:
+        relative_path = str(resolved.relative_to(repo.resolve()))
+    except ValueError:
+        relative_path = None
+
+    return {
+        "path": str(resolved),
+        "relativePath": relative_path,
+        "fileName": resolved.name,
+        "modifiedTimeUtc": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
+        "sizeBytes": stat.st_size,
+        "solutionUniqueName": solution_unique_name,
+        "solutionVersion": solution_version,
+        "managed": managed,
+        "componentDiff": component_diff,
+        "generatedThisSession": generated_this_session,
+        "explicitUserSelection": explicit_user_selection,
+        "staleRisk": stale_risk,
+    }
+
+
+def classify_artifact_stale_risk(path: Path, generated_this_session: bool, explicit_user_selection: bool) -> str:
+    if generated_this_session:
+        return "generated-this-session"
+    if explicit_user_selection:
+        return "allowed-explicit-selection"
+    if path.suffix.lower() != ".zip":
+        return "low"
+    lower_parts = {part.lower() for part in path.parts}
+    stale_location = bool({"release", "downloads", "temp"} & lower_parts) or "bin" in lower_parts
+    return "blocked-stale-candidate" if stale_location else "needs-review"
+
+
+def first_text_value(source: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = text_or_none(source.get(key))
+        if value:
+            return value
+    return None
+
+
+def text_or_none(value: Any) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def is_missing(value: Any) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        return not value.strip()
+    if isinstance(value, list):
+        return len(value) == 0
+    return False
 
 
 def run_live_preflight(

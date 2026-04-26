@@ -1,11 +1,58 @@
 ---
 name: powerplatform-core
-description: General-purpose Power Platform and Dataverse development skill for code-first, repo-backed execution in coding-agent workflows across model-driven apps, Dynamics 365, plug-ins, custom APIs, PCF controls, web resources, solution-aware cloud flows, Dataverse metadata, Dataverse data operations, PAC CLI workflows, and headless Dataverse automation through CLI, SDK, Web API, and solution import flows. Use when Codex needs to inspect an unfamiliar or varied repo layout, infer the active project context, and implement or troubleshoot changes without assuming one house project structure or one company's repo conventions.
+description: PowerPlatform-Core is a coding-agent skill for Microsoft Power Platform and Dataverse development. Use when Codex needs to read a repo, understand model-driven app and solution structure, and safely build, validate, or deliver source-controlled changes such as plug-ins, PCF controls, web resources, form metadata, RibbonDiffXml, solution-aware flows, Dataverse schema, configuration data, custom APIs, PAC CLI workflows, SDK/Web API automation, and solution ALM without assuming one house repo convention.
 ---
 
 # Power Platform Development
 
-Plan and implement solution-based Dataverse changes for model-driven apps and Dynamics 365 without assuming one fixed repo shape, naming scheme, or team convention. Keep the skill reusable across repositories, publishers, solution names, and environments. This skill is designed to maximize source-controlled, reviewable, testable, and maintainable execution in coding-agent workflows. Prefer source-controlled, supported customizations and reliable headless paths when they exist, keep durable thread continuity, and open only the smallest reference set needed for the task. This skill is intentionally code-first for executable logic: it prefers JavaScript, plug-ins, and custom APIs over Dataverse Business Rules.
+PowerPlatform-Core is a coding-agent skill for Microsoft Power Platform and Dataverse development. Use it when you want Codex to read a repo, understand model-driven app and solution structure, and safely build, validate, and deliver source-controlled changes such as plug-ins, PCF controls, web resources, form metadata, RibbonDiffXml, solution-aware flows, Dataverse schema, and configuration data.
+
+It is intentionally code-first for executable logic: prefer JavaScript, plug-ins, custom APIs, supported metadata APIs, SDK/Web API helpers, PAC CLI workflows, and repo-owned deploy wrappers over Business Rules, portal memory, browser automation, or stale solution packages.
+
+## How It Works
+
+1. Discover repo context, project profile, source areas, local solution artifacts, and any active overlay skill before asking setup questions.
+2. Choose the right development surface: code, metadata, PCF, flow, config data, or solution ALM.
+3. Apply repo-backed changes first so the result is source-controlled and reviewable.
+4. Run a live mutation preflight before any deploy, publish, import, registration, push, or data write.
+5. Validate and deploy only through the approved targeted path unless the user explicitly accepts a broader blast radius.
+
+## Mandatory Live Mutation Preflight
+
+Before any live Dataverse mutation, print or capture a preflight gate. Use `scripts/validate_delivery.py --preflight-spec ...` when it fits; otherwise produce the same fields manually and stop if any required field is missing.
+
+Required fields:
+
+- target environment URL
+- active PAC profile and mismatch warning when PAC is involved
+- target solution unique name and whether it is a patch
+- mutation type: web resource, form, ribbon, plug-in, flow, PCF, config data, metadata, or solution import
+- exact components touched
+- delivery primitive
+- artifact path, creation/modification time, solution name/version, managed state, and component diff when any ZIP/package is used
+- blast radius: targeted, component subset, patch package, or full solution
+- rollback or recovery plan
+- timeout and fallback path
+- explicit confirmation when the primitive is not targeted
+
+Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unless it was generated in the current session or explicitly selected by the user. If multiple package candidates exist, stop and ask. Do not silently escalate from a targeted helper to solution import.
+
+## Deployment And Pull Decision Matrix
+
+| Task | Preferred primitive | Stop condition |
+| --- | --- | --- |
+| One authored JS/HTML/CSS web resource changed | edit source, then `sync_webresource.py` | target solution or web resource name unclear |
+| Several web resources changed | `sync_webresources_batch.py` or repo wrapper | batch includes unrelated files |
+| Plug-in assembly/package changed | build, `push_plugin.py` or repo-owned plug-in wrapper, then step-state verification | registration target or critical step state unclear |
+| PCF changed | build/version with `version_pcf_solution.py`, deploy with `deploy_pcf.py` or wrapper solution | stale wrapper ZIP or unmanaged target unclear |
+| Form XML changed | `patch_form_xml.py`, `update_main_form.py`, or direct metadata update | helper cannot express the change |
+| RibbonDiffXml changed | `patch_form_ribbon.py` or direct metadata update | package import is the only remaining path |
+| Solution-aware flow changed | inspect/lint, then `update_flow.py` or `create_flow.py`; promote via solution ALM | semantic guard fails or connection refs unclear |
+| Config data rows changed | dry-run/diff through workflow or repo tool, then keyed `upsert_data.py`/SDK/Web API | no stable key or delete requested |
+| Need latest metadata reference | `ensure_dataverse_reference.py` to hydrate or refresh `Dataverse/<solution>` | live target solution ambiguous |
+| Existing unpacked source needs sync | `pac solution sync` on the known solution folder | repo and live both contain new work |
+| Unpack a specific artifact | inspect package metadata, then `pac solution unpack` to a reviewed folder | artifact freshness or solution identity unclear |
+| Solution import requested | fresh package only, `validate_delivery.py`, explicit blast-radius approval, then `deploy_solution.py` | targeted primitive exists or package may be stale |
 
 ## Workflow
 
@@ -21,7 +68,7 @@ Plan and implement solution-based Dataverse changes for model-driven apps and Dy
 10. Open [references/helper-strategy.md](references/helper-strategy.md) when deciding whether to add a new reusable helper, when expanding the automation library, or when a capability is still workflow-driven and needs to be categorized.
 11. Open [references/execution-surface-guide.md](references/execution-surface-guide.md) when deciding between metadata, client script, plug-ins, custom APIs, flows, HTML web resources, or PCF.
 12. Open [references/verification-and-recovery.md](references/verification-and-recovery.md) when the task will mutate live Dataverse state, includes deployment, publish, import, registration, or repo-versus-live reconciliation work, or needs a precise completion standard before execution starts.
-13. Before live deployment, classify the surface explicitly: asset type, chosen primitive, whether targeted delivery is supported, whether the surface is manual-only, timeout budget, and fallback path. Prefer `scripts/apply_requirement_spec.py` for that preflight when the work spans multiple steps.
+13. Before live deployment, run the mandatory live mutation preflight: asset type, chosen primitive, exact components, artifact source, targeted support, manual-only status, timeout budget, fallback path, and blast radius. Prefer `scripts/validate_delivery.py --preflight-spec ...` for a single gate or `scripts/apply_requirement_spec.py` for coordinated requirements.
 14. Open only the task-specific references you need:
    - [references/dataverse-design.md](references/dataverse-design.md) for requirement-to-schema design, alternate keys, and query-shape planning before metadata execution.
    - [references/dataverse-metadata.md](references/dataverse-metadata.md) for tables, columns, relationships, forms, views, and icons.
@@ -38,7 +85,7 @@ Plan and implement solution-based Dataverse changes for model-driven apps and Dy
    - [references/document-generation.md](references/document-generation.md) for Word Templates, content controls, and document-generation change planning.
    - [references/queries-and-xml.md](references/queries-and-xml.md) for Power Automate Dataverse queries, OData, FetchXML, LayoutXML, and solution XML.
    - [references/code-apps.md](references/code-apps.md) for Power Apps Code Apps — architecture, Vite scaffold, Dataverse data source integration, CRUD patterns, ALM, and admin setup. If `discover_context.py` returns multiple entries in `code_apps` (multi-app `CodeApp/` folder pattern), list them and ask the user which app to target before running any build or push operation. Use `scripts/push_code_app.py --all` to push all apps in sequence.
-15. Keep every change solution-scoped. Add or update artifacts in the target unmanaged solution instead of editing the environment without source control unless the user explicitly asks for a portal-only change.
+15. Keep every change solution-scoped. This means add or update only the scoped components in the target unmanaged solution or selected patch. It does not mean defaulting to solution package import.
 16. Prefer the automation ladder in [references/execution-automation.md](references/execution-automation.md): repo edits, SDK or Web API, solution XML, `pac` CLI, and direct deployment tools. Do not choose browser automation unless the user explicitly approves a fallback after headless options are exhausted.
 17. Prefer reusable helper scripts in `scripts/` when they already cover the task. Current helpers include `discover_context.py`, `auth_context.py`, `ensure_dataverse_reference.py`, `apply_requirement_spec.py`, `whoami.py`, `upsert_data.py`, `create_table.py`, `create_field.py`, `create_lookup.py`, `inspect_flow.py`, `lint_flow.py`, `review_flow_hardening.py`, `review_flow_connectors.py`, `create_flow.py`, `update_flow.py`, `get_flow_trigger_url.py`, `inspect_environment_variable.py`, `set_environment_variable_value.py`, `design_dataverse_schema.py`, `design_dataverse_query.py`, `review_solution_standards.py`, `debug_power_fx.py`, `design_custom_connector.py`, `plan_document_generation.py`, `plan_solution_patch_merge.py`, `update_main_form.py`, `patch_form_xml.py`, `patch_form_ribbon.py`, `update_form_events.py`, `bind_pcf_control.py`, `update_view.py`, `set_table_icon.py`, `sync_webresource.py`, `sync_webresources_batch.py`, `inspect_word_templates.py`, `create_custom_api.py`, `inspect_security_role.py`, `create_security_role.py`, `update_security_role.py`, `inspect_plugin_steps.py`, `ensure_plugin_step_state.py`, `register_plugin_headless.py`, `register_plugin_package_headless.py`, `scaffold_pcf_control.py`, `deploy_pcf.py`, `version_pcf_solution.py`, `add_solution_components.py`, `solution_version.py`, `deploy_solution.py`, `validate_delivery.py`, and `push_plugin.py`, and `push_code_app.py`.
 18. When a capability is not yet a helper, decide explicitly whether it belongs in:

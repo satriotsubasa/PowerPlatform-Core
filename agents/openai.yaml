@@ -1,7 +1,7 @@
 interface:
   display_name: "Power Platform Core"
-  short_description: "Code-first Dataverse and Power Platform skill"
+  short_description: "Coding-agent skill for Microsoft Power Platform and Dataverse development"
   icon_small: "./assets/power-platform-uploaded-exact.png"
   icon_large: "./assets/power-platform-uploaded-exact.png"
   brand_color: "#149CA1"
-  default_prompt: "Use $powerplatform-core to inspect the current repo, infer the active Power Platform project context without assuming a fixed house structure, and implement the requested change end to end with a code-first approach."
+  default_prompt: "Use $powerplatform-core to read this repo, understand the Microsoft Power Platform and Dataverse solution structure, choose the right development surface, and safely build, validate, and deliver the requested source-controlled change with the required live mutation preflight."

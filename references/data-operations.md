@@ -1,11 +1,13 @@
 # Data Operations
 
-Use this reference for Dataverse business data row creation, update, and upsert work.
+Use this reference for Dataverse business data row creation, update, upsert, and configuration data sync work.
 
 Default safety rule:
 
 - create, update, and upsert are in scope when the user asks
+- separate solution customization from configuration rows; a solution import is not the default way to sync environment-specific config data
 - do not delete business data unless the user explicitly asks for deletion and separately approves it
+- require a dry-run, diff, or workflow-level plan before applying config data to TST/TEST
 
 ## Supported Paths
 
@@ -81,7 +83,7 @@ When the source identifier comes from another system, do not rely on a bare reus
 
 ## Dry-Run And Apply Planning
 
-For imports, migrations, bulk corrections, or other rerunnable write sets, prefer a plan phase before live apply.
+For config data sync, imports, migrations, bulk corrections, or other rerunnable write sets, prefer a plan phase before live apply.
 
 A useful dry-run or plan should surface:
 
@@ -98,6 +100,7 @@ Important current capability boundary:
 - the shared helper `scripts/upsert_data.py` performs live row writes and optional post-write verification
 - it does not currently expose a generic dry-run or plan mode
 - when a dry-run is required, keep that phase in the workflow or repo-specific tooling layer instead of implying that the shared helper already supports it
+- do not upsert config data to TST/TEST until the dry-run/diff names created, updated, skipped, and invalid rows
 
 ## Provenance
 

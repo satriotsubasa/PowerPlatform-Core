@@ -23,6 +23,7 @@ Register only named exported functions with the expected signature. Document whi
 
 When the task includes headless form library registration or handler binding, prefer the reusable helper at `scripts/update_form_events.py` instead of assuming the maker UI is required.
 When the task includes headless upload or update of the underlying JavaScript, HTML, CSS, XML, or image web resource file, prefer `scripts/sync_webresource.py`.
+When the task includes form XML or RibbonDiffXml, prefer `scripts/patch_form_xml.py`, `scripts/patch_form_ribbon.py`, `scripts/update_main_form.py`, or a direct metadata update. If those paths cannot express the change, stop and explain the gap before considering a solution package import.
 
 ## Suggested Script Shape
 

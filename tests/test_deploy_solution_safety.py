@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -17,6 +18,33 @@ import deploy_solution  # type: ignore
 
 
 class DeploySolutionSafetyTests(unittest.TestCase):
+    def test_deploy_solution_blocks_stale_release_zip_when_skip_pack_uses_existing_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "Solutions" / "bin" / "Release" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"stale package")
+
+            with self.assertRaises(RuntimeError):
+                deploy_solution.enforce_artifact_freshness(
+                    zipfile=artifact,
+                    skip_pack=True,
+                    artifact_generated_this_session=False,
+                    explicit_artifact_selection=False,
+                )
+
+    def test_deploy_solution_allows_explicitly_selected_existing_zip(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            artifact = Path(temp_dir) / "Solutions" / "bin" / "Release" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"selected package")
+
+            deploy_solution.enforce_artifact_freshness(
+                zipfile=artifact,
+                skip_pack=True,
+                artifact_generated_this_session=False,
+                explicit_artifact_selection=True,
+            )
+
     def test_infer_deployment_change_scope_detects_targeted_component_requirement(self) -> None:
         requirement = {
             "mainForms": [{"tableLogicalName": "contoso_requestline", "formName": "Information"}],
@@ -64,6 +92,28 @@ class DeploySolutionSafetyTests(unittest.TestCase):
         self.assertIn("--max-runtime-seconds", captured["command"])
         timeout_index = captured["command"].index("--max-runtime-seconds") + 1
         self.assertEqual(captured["command"][timeout_index], "600")
+
+    def test_run_deploy_solution_helper_passes_artifact_freshness_flags(self) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_run_command(command: list[str], *, cwd: Path | None = None, check: bool = True) -> SimpleNamespace:
+            captured["command"] = command
+            return SimpleNamespace(stdout='{"success": true}')
+
+        with mock.patch.object(apply_requirement_spec, "run_command", side_effect=fake_run_command):
+            apply_requirement_spec.run_deploy_solution_helper(
+                {
+                    "skipPack": True,
+                    "explicitArtifactSelection": True,
+                    "artifactGeneratedThisSession": True,
+                },
+                repo=Path.cwd(),
+                connection={"environment_url": "https://contoso.crm.dynamics.com"},
+            )
+
+        self.assertIn("--skip-pack", captured["command"])
+        self.assertIn("--explicit-artifact-selection", captured["command"])
+        self.assertIn("--artifact-generated-this-session", captured["command"])
 
     def test_deploy_solution_blocks_targeted_component_import_without_explicit_override(self) -> None:
         with mock.patch.object(
