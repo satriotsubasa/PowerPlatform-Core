@@ -59,6 +59,7 @@ When the change is more complex than moving or adding fields:
 
 - use `scripts/patch_form_xml.py` for targeted `systemform.formxml` patch operations such as replacing header or body fragments, inserting specific XML fragments, or setting element attributes on a named form
 - use `scripts/patch_form_ribbon.py` for targeted `RibbonDiffXml` patch operations on a named form when the requirement is really command-bar or ribbon metadata and should not broaden into a whole-solution import
+- for subgrid command visibility or enablement, prefer static command definitions plus JavaScript `CustomRule` in a web resource; avoid XML `ValueRule` for selected-row field or status logic unless proven on the target live grid
 - keep the patch spec narrow and reviewable; target the smallest XPath and fragment that satisfies the requirement
 - if the needed change still exceeds these helper surfaces, stop and explain the limitation instead of escalating silently to a broad solution import
 

@@ -30,6 +30,16 @@ class SkillMessagingTests(unittest.TestCase):
         self.assertIn("discover repo context", readme.lower())
         self.assertIn("approved targeted paths", readme.lower())
 
+    def test_core_command_bar_guidance_prefers_javascript_rules(self) -> None:
+        skill_text = (REPO_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        client_reference = (REPO_ROOT / "references" / "client-customization.md").read_text(encoding="utf-8")
+        execution_reference = (REPO_ROOT / "references" / "execution-automation.md").read_text(encoding="utf-8")
+
+        self.assertIn("JavaScript `CustomRule`", skill_text)
+        self.assertIn("Avoid XML `ValueRule`", client_reference)
+        self.assertIn("RibbonDiffXml Recovery Path", execution_reference)
+        self.assertIn("10-30 minute duration window", execution_reference)
+
 
 if __name__ == "__main__":
     unittest.main()

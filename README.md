@@ -64,6 +64,7 @@ For the fuller maintainer-oriented capability breakdown that used to live in the
 Core guidance now also explicitly covers:
 
 - choosing the right implementation surface through [references/execution-surface-guide.md](references/execution-surface-guide.md)
+- command-bar and RibbonDiffXml safety: prefer JavaScript `CustomRule` for subgrid selected-row logic and stop before any 10-30 minute solution-import fallback
 - completion evidence and partial-failure recovery through [references/verification-and-recovery.md](references/verification-and-recovery.md)
 - immutable stable keys, source-system-qualified provenance, and honest dry-run boundaries in data operations
 - explicit deployment closeout that distinguishes repo-ready from environment-updated state

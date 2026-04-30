@@ -35,6 +35,8 @@ Required fields:
 - timeout and fallback path
 - explicit confirmation when the primitive is not targeted
 
+If the delivery primitive becomes solution import, stop before import and state that this is no longer a fast targeted deploy, that it commonly takes 10-30 minutes including import, publish, cache refresh, and verification, and what narrower path was unavailable.
+
 Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unless it was generated in the current session or explicitly selected by the user. If multiple package candidates exist, stop and ask. Do not silently escalate from a targeted helper to solution import.
 
 ## Deployment And Pull Decision Matrix
@@ -46,7 +48,8 @@ Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unle
 | Plug-in assembly/package changed | build, `push_plugin.py` or repo-owned plug-in wrapper, then step-state verification | registration target or critical step state unclear |
 | PCF changed | build/version with `version_pcf_solution.py`, deploy with `deploy_pcf.py` or wrapper solution | stale wrapper ZIP or unmanaged target unclear |
 | Form XML changed | `patch_form_xml.py`, `update_main_form.py`, or direct metadata update | helper cannot express the change |
-| RibbonDiffXml changed | `patch_form_ribbon.py` or direct metadata update | package import is the only remaining path |
+| Subgrid command visibility or enablement changed | keep the command stable; prefer JavaScript `CustomRule` in a web resource for selected-row status/field logic | XML `ValueRule` behavior is not already proven on that live grid |
+| RibbonDiffXml changed | `patch_form_ribbon.py` or direct metadata update; package only from a fresh export/import recovery path | package import is the only remaining path |
 | Solution-aware flow changed | inspect/lint, then `update_flow.py` or `create_flow.py`; promote via solution ALM | semantic guard fails or connection refs unclear |
 | Config data rows changed | dry-run/diff through workflow or repo tool, then keyed `upsert_data.py`/SDK/Web API | no stable key or delete requested |
 | Need latest metadata reference | `ensure_dataverse_reference.py` to hydrate or refresh `Dataverse/<solution>` | live target solution ambiguous |
@@ -178,6 +181,7 @@ Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unle
 - For security-role work, prefer `scripts/inspect_security_role.py` for list or inspect, `scripts/create_security_role.py` for new custom roles, and `scripts/update_security_role.py` for privilege-set or metadata changes. Do not update system-generated roles unless the user explicitly approves it.
 - If the repo already has a safe deploy wrapper or deploy script for the current asset type, prefer that repo-owned entry point over reconstructing the same deployment sequence ad hoc. Otherwise fall back to the generic helpers and official tools in this skill.
 - During live execution, report the current command or primitive, expected duration class, timeout budget, blocker, and fallback instead of silently polling for long periods.
+- For model-driven command bars and subgrids, prefer static RibbonDiffXml commands with visibility or enablement delegated to JavaScript `CustomRule` in a web resource. Avoid XML `ValueRule` for selected-row field or status logic unless the same rule shape is already proven on the target live grid.
 - Use repo-root `README.md` plus `CODEX_HANDOFF.md` as the durable project memory layer when work is expected to continue across threads.
 - If the repo already has a strong `README.md`, do not overwrite it. Insert or update a compact "Start Here" block near the top, typically after the title and first summary paragraph.
 - Prefer headless implementation for forms, views, library registration, web resource deployment, PCF deployment, and metadata changes through solution files, Dataverse APIs, or CLI before considering any browser flow.

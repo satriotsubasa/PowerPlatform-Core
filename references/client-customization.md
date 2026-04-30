@@ -25,6 +25,25 @@ When the task includes headless form library registration or handler binding, pr
 When the task includes headless upload or update of the underlying JavaScript, HTML, CSS, XML, or image web resource file, prefer `scripts/sync_webresource.py`.
 When the task includes form XML or RibbonDiffXml, prefer `scripts/patch_form_xml.py`, `scripts/patch_form_ribbon.py`, `scripts/update_main_form.py`, or a direct metadata update. If those paths cannot express the change, stop and explain the gap before considering a solution package import.
 
+## Command Bar And Ribbon Rules
+
+For model-driven command bars, especially subgrid buttons, keep RibbonDiffXml as static as practical. Prefer a stable command definition whose visibility or enablement calls JavaScript `CustomRule` in a web resource.
+
+Avoid XML `ValueRule` for selected-row field or status logic unless the same rule shape is already proven on the target live grid. Modern subgrid command bars may not expose every expected field value to XML rules, and calculated or display-only columns may not match the raw stored value an XML rule expects.
+
+Before changing RibbonDiffXml, check whether the requirement can be satisfied with a web-resource-only change:
+
+- existing command already calls a JavaScript rule or action
+- existing command can call a new helper function without XML changes
+- visibility logic can move from XML field rules into JavaScript with targeted web resource deploy
+
+After command-bar deployment, verify behavior instead of trusting import output alone:
+
+- hard refresh the app and clear stale command-bar cache where the environment requires it
+- select rows that should show and hide each command
+- verify enabled/visible behavior for the full expected matrix
+- export or read back the target metadata when deployment used RibbonDiffXml and assert the expected command, rule, and library references are present
+
 ## Suggested Script Shape
 
 ```javascript

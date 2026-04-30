@@ -37,6 +37,8 @@ For a single live mutation gate, use `scripts/validate_delivery.py --preflight-s
 
 Do not import a package from `bin`, `Release`, `Downloads`, or old temp folders unless it was generated in the current session or explicitly selected by the user. Before package import, show the path, modified time, solution unique name, version, managed/unmanaged state, and component diff. If more than one package could be the candidate, stop and ask.
 
+If the primitive becomes solution import, stop before import and tell the user that this is no longer a fast targeted deploy. State the expected 10-30 minute duration window, including import, publish, cache refresh, and read-back verification, then ask for explicit approval when a narrower path is unavailable.
+
 ## What "Fully Execute" Means
 
 If the user asks for full execution, aim to:
@@ -84,7 +86,8 @@ Use these defaults unless the repo profile or repo-owned wrapper says otherwise:
 | plug-in update | build, `push_plugin.py`, then step-state verification |
 | PCF update | version/build, `deploy_pcf.py`, or wrapper `Solutions` package generated now |
 | form XML update | `patch_form_xml.py`, `update_main_form.py`, or direct metadata update |
-| RibbonDiffXml update | `patch_form_ribbon.py` or direct metadata update |
+| command visibility/update | web-resource-only JavaScript `CustomRule` when possible; `patch_form_ribbon.py` only when metadata must change |
+| RibbonDiffXml update | `patch_form_ribbon.py` or direct metadata update; package import only through the recovery path below |
 | solution-aware flow update | `inspect_flow.py`, lint/review when needed, then `update_flow.py` |
 | configuration rows | dry-run/diff first, then keyed SDK/Web API or `upsert_data.py` |
 | hydrate missing metadata reference | `ensure_dataverse_reference.py` into `Dataverse/<solution>` |
@@ -122,6 +125,19 @@ When Codex is executing live work, report these explicitly instead of silently p
 - next fallback
 
 For long solution imports, distinguish between “still waiting on Dataverse-side import work” and “still trying local execution”.
+
+## RibbonDiffXml Recovery Path
+
+Use this only when a targeted helper or direct metadata update cannot safely express the command-bar change and the user has approved package import after preflight.
+
+1. Export or obtain a fresh package from the approved live source or generate it in the current session.
+2. Show package path, timestamp, solution identity, version, managed state, component list, and why a targeted route is unavailable.
+3. Overlay only the target entity/form RibbonDiffXml and any directly related web resource changes.
+4. Bump the solution or patch version when re-importing the same version could be rejected.
+5. Import the package through the approved wrapper or `deploy_solution.py`.
+6. Publish only the affected entity and web resources with targeted publish where supported; avoid broad publish when not required.
+7. Export or read back the target metadata and assert the expected command, rule, library, and action XML are present.
+8. Complete a command-bar verification pass: hard refresh, select eligible and ineligible rows, and verify the expected visible/enabled matrix.
 
 ## Area-Specific Execution
 
