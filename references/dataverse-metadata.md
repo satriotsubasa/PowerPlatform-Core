@@ -58,8 +58,9 @@ Keep form diffs minimal. If a field is added for business use, consider whether 
 When the change is more complex than moving or adding fields:
 
 - use `scripts/patch_form_xml.py` for targeted `systemform.formxml` patch operations such as replacing header or body fragments, inserting specific XML fragments, or setting element attributes on a named form
-- use `scripts/patch_form_ribbon.py` for targeted `RibbonDiffXml` patch operations on a named form when the requirement is really command-bar or ribbon metadata and should not broaden into a whole-solution import
+- use `scripts/patch_form_ribbon.py` only for targeted form-level `RibbonDiffXml` patch operations on a named form
 - for subgrid command visibility or enablement, prefer static command definitions plus JavaScript `CustomRule` in a web resource; avoid XML `ValueRule` for selected-row field or status logic unless proven on the target live grid
+- for entity-level command bars, new buttons, new commands, new action bindings, or new display rules, assume package recovery is required: fresh selected solution or patch export, overlay only `Entities/<entity>/RibbonDiff.xml` and related web resources, bump version before import, import, targeted publish, and read-back verification
 - keep the patch spec narrow and reviewable; target the smallest XPath and fragment that satisfies the requirement
 - if the needed change still exceeds these helper surfaces, stop and explain the limitation instead of escalating silently to a broad solution import
 

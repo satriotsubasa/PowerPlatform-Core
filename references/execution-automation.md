@@ -86,8 +86,10 @@ Use these defaults unless the repo profile or repo-owned wrapper says otherwise:
 | plug-in update | build, `push_plugin.py`, then step-state verification |
 | PCF update | version/build, `deploy_pcf.py`, or wrapper `Solutions` package generated now |
 | form XML update | `patch_form_xml.py`, `update_main_form.py`, or direct metadata update |
-| command visibility/update | web-resource-only JavaScript `CustomRule` when possible; `patch_form_ribbon.py` only when metadata must change |
-| RibbonDiffXml update | `patch_form_ribbon.py` or direct metadata update; package import only through the recovery path below |
+| existing command logic update | web-resource-only JavaScript `CustomRule` or action change when metadata already points at it |
+| form-level ribbon metadata | `patch_form_ribbon.py` or direct metadata update |
+| entity command bar/new button/new command/new display rule | fresh selected solution or patch export, overlay `Entities/<entity>/RibbonDiff.xml`, bump version before import, pack/import, targeted publish, read back |
+| other RibbonDiffXml update | matching targeted metadata helper when it fits; otherwise package import only through the recovery path below |
 | solution-aware flow update | `inspect_flow.py`, lint/review when needed, then `update_flow.py` |
 | configuration rows | dry-run/diff first, then keyed SDK/Web API or `upsert_data.py` |
 | hydrate missing metadata reference | `ensure_dataverse_reference.py` into `Dataverse/<solution>` |
@@ -130,10 +132,12 @@ For long solution imports, distinguish between “still waiting on Dataverse-sid
 
 Use this only when a targeted helper or direct metadata update cannot safely express the command-bar change and the user has approved package import after preflight.
 
+Do not use this path for existing command JavaScript-only changes; deploy the web resource instead. Do use this path by default for entity-level command bars, new buttons, new commands, new action bindings, and new display rules.
+
 1. Export or obtain a fresh package from the approved live source or generate it in the current session.
 2. Show package path, timestamp, solution identity, version, managed state, component list, and why a targeted route is unavailable.
 3. Overlay only the target entity/form RibbonDiffXml and any directly related web resource changes.
-4. Bump the solution or patch version when re-importing the same version could be rejected.
+4. Bump the solution or patch version before import when the operation is ribbon package recovery, because same-version imports can report success without applying the metadata.
 5. Import the package through the approved wrapper or `deploy_solution.py`.
 6. Publish only the affected entity and web resources with targeted publish where supported; avoid broad publish when not required.
 7. Export or read back the target metadata and assert the expected command, rule, library, and action XML are present.
@@ -220,7 +224,8 @@ Use this only when a targeted helper or direct metadata update cannot safely exp
 - prefer `scripts/add_solution_components.py` when the task is deterministic solution scoping rather than freeform metadata design
 - use these headless paths for form layout, library registration, handler wiring, and view definition before considering any UI path
 - prefer `scripts/patch_form_xml.py` for targeted main-form XML surgery such as replacing header or body fragments, inserting known XML fragments, or setting attributes on named nodes
-- prefer `scripts/patch_form_ribbon.py` for targeted form `RibbonDiffXml` updates when the requirement is a command-bar or ribbon customization on one form
+- prefer `scripts/patch_form_ribbon.py` for targeted form-level `RibbonDiffXml` updates on one form
+- treat entity-level command bars, new buttons, new commands, new action bindings, and new display rules as package-recovery work unless the repo has a proven targeted helper for that surface
 - if the required form or command-bar change still exceeds the supported helper surface, stop and surface that limitation instead of falling back to a whole-solution import automatically
 
 ## Delivery Validation

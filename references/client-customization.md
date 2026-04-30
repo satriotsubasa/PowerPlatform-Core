@@ -37,6 +37,12 @@ Before changing RibbonDiffXml, check whether the requirement can be satisfied wi
 - existing command can call a new helper function without XML changes
 - visibility logic can move from XML field rules into JavaScript with targeted web resource deploy
 
+Classify command-bar work before choosing a deployment primitive:
+
+- existing command plus JavaScript-only logic change: deploy the web resource only
+- form-level ribbon metadata on a named form: use `patch_form_ribbon.py` or direct metadata update
+- entity-level command bar, new button, new command, new action binding, or new display rule: use the fresh solution/patch export-import recovery path; do not try the form-ribbon helper first
+
 After command-bar deployment, verify behavior instead of trusting import output alone:
 
 - hard refresh the app and clear stale command-bar cache where the environment requires it

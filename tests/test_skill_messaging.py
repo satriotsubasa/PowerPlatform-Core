@@ -39,6 +39,9 @@ class SkillMessagingTests(unittest.TestCase):
         self.assertIn("Avoid XML `ValueRule`", client_reference)
         self.assertIn("RibbonDiffXml Recovery Path", execution_reference)
         self.assertIn("10-30 minute duration window", execution_reference)
+        self.assertIn("Entity command bar, new button, new command, or new display rule", skill_text)
+        self.assertIn("do not try the form-ribbon helper first", client_reference)
+        self.assertIn("bump version before import", execution_reference)
 
 
 if __name__ == "__main__":

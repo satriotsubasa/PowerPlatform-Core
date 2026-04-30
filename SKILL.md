@@ -48,8 +48,10 @@ Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unle
 | Plug-in assembly/package changed | build, `push_plugin.py` or repo-owned plug-in wrapper, then step-state verification | registration target or critical step state unclear |
 | PCF changed | build/version with `version_pcf_solution.py`, deploy with `deploy_pcf.py` or wrapper solution | stale wrapper ZIP or unmanaged target unclear |
 | Form XML changed | `patch_form_xml.py`, `update_main_form.py`, or direct metadata update | helper cannot express the change |
-| Subgrid command visibility or enablement changed | keep the command stable; prefer JavaScript `CustomRule` in a web resource for selected-row status/field logic | XML `ValueRule` behavior is not already proven on that live grid |
-| RibbonDiffXml changed | `patch_form_ribbon.py` or direct metadata update; package only from a fresh export/import recovery path | package import is the only remaining path |
+| Existing command, JS-only visibility/action logic changed | edit the web resource and deploy it with `sync_webresource.py` or `sync_webresources_batch.py` | command metadata also needs to change |
+| Form-level ribbon command changed | `patch_form_ribbon.py` or direct metadata update | new entity command, new button, new command, or new display rule is required |
+| Entity command bar, new button, new command, or new display rule changed | fresh selected solution/patch export, overlay only `Entities/<entity>/RibbonDiff.xml` and related web resources, bump version before import, pack/import, targeted publish, read back | selected solution/patch, entity, or package approval is unclear |
+| Other RibbonDiffXml changed | use the matching targeted metadata helper when it fits; otherwise use the fresh export/import recovery path | package import is the only remaining path |
 | Solution-aware flow changed | inspect/lint, then `update_flow.py` or `create_flow.py`; promote via solution ALM | semantic guard fails or connection refs unclear |
 | Config data rows changed | dry-run/diff through workflow or repo tool, then keyed `upsert_data.py`/SDK/Web API | no stable key or delete requested |
 | Need latest metadata reference | `ensure_dataverse_reference.py` to hydrate or refresh `Dataverse/<solution>` | live target solution ambiguous |
