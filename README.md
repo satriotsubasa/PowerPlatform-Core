@@ -1,12 +1,20 @@
-# PowerPlatform-Core
+<p align="center">
+  <img src="plugins/powerplatform-core/assets/logo.png" alt="PowerPlatform-Core logo" width="150">
+</p>
 
-**A code-first coding-agent plugin that turns Microsoft Power Platform & Dataverse work into a safe, source-controlled, repo-first workflow.**
+<h1 align="center">PowerPlatform-Core</h1>
 
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](#install)
-[![OpenAI Codex](https://img.shields.io/badge/OpenAI%20Codex-plugin-412991.svg)](#install)
-[![Cross-platform](https://img.shields.io/badge/Cross--platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2ea44f.svg)](#requirements)
-[![Built with](https://img.shields.io/badge/Built%20with-Python%20%C2%B7%20.NET%208-149CA1.svg)](#how-its-built)
+<p align="center">
+  <strong>A code-first coding-agent plugin that turns Microsoft Power Platform &amp; Dataverse work into a safe, source-controlled, repo-first workflow.</strong>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache--2.0-blue.svg"></a>
+  <a href="#install"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg"></a>
+  <a href="#install"><img alt="OpenAI Codex" src="https://img.shields.io/badge/OpenAI%20Codex-plugin-412991.svg"></a>
+  <a href="#requirements"><img alt="Cross-platform" src="https://img.shields.io/badge/Cross--platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2ea44f.svg"></a>
+  <a href="#how-its-built"><img alt="Built with" src="https://img.shields.io/badge/Built%20with-Python%20%C2%B7%20.NET%208-149CA1.svg"></a>
+</p>
 
 ---
 
