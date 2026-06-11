@@ -1,15 +1,15 @@
 ---
 name: code-apps
 description: >
-  Use for Power Apps Code Apps — the pro-code app-hosting model where a Vite-built React/Vue/TS
+  Use for Power Apps Code Apps - the pro-code model where a standalone Vite-built React/Vue/TS
   single-page app uses the `@microsoft/power-apps` client library and is pushed into a Power
   Platform environment with no server to manage. Covers scaffolding from the official Vite
   template, initializing with `power.config.json`, adding Dataverse data sources that generate
   typed model/service files, local dev, building, and pushing via `npx power-apps push` (npm CLI)
-  or legacy `pac code push`. Trigger this whenever the user mentions a code app, `power.config.json`,
+  or legacy `pac code push`. Trigger whenever the user mentions a code app, `power.config.json`,
   `@microsoft/power-apps`, `pac code` / `power-apps` CLI, a `CodeApp/` folder, or wants to build,
-  run, or push a custom SPA into Power Platform — even if no helper is named. This is NOT for PCF
-  controls embedded in forms or for Canvas/maker apps.
+  run, or push a custom SPA into Power Platform, even if no helper is named. Not for PCF controls
+  embedded in model-driven forms (use pcf-and-web-resources) or Canvas/maker apps.
 ---
 
 # Power Apps Code Apps

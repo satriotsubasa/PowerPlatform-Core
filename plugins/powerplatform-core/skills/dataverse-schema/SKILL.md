@@ -1,15 +1,15 @@
 ---
 name: dataverse-schema
 description: >
-  Use whenever the user wants to create or change Dataverse table metadata — tables, columns,
-  lookups and relationships, choices/option sets, alternate keys, main forms, public/lookup
-  views, the form-level ribbon (RibbonDiffXml), form event handlers and script libraries, or
-  table icons — and for up-front schema and query-shape design before any metadata is created.
-  Trigger on phrases like "create a table", "add a column/field", "add a lookup", "add a choice",
-  "set an alternate key", "update the main form", "add a view / change view columns", "add a
-  button to the form ribbon", "set the table icon", or "design a Dataverse schema", even when the
-  user never names a helper script or file. Prefer this skill over hand-edited customizations.xml
-  for routine table, column, form, view, ribbon, and icon work.
+  Use for Dataverse table METADATA - tables, columns, lookups/relationships, choices/option
+  sets, alternate keys, main forms, public/lookup views, the form-level ribbon (RibbonDiffXml),
+  form event handlers and script libraries, and table icons - plus up-front schema and
+  query-shape design before metadata exists. Trigger on "create a table", "add a column/field",
+  "add a lookup", "add a choice", "set an alternate key", "update the main form", "add a view /
+  change view columns", "add a button to the form ribbon", "set the table icon", or "design a
+  Dataverse schema", even when no helper is named. Prefer this over hand-edited
+  customizations.xml. Not for row/record DATA, seeding config rows, or query authoring - use
+  data-operations.
 ---
 
 # Dataverse Schema

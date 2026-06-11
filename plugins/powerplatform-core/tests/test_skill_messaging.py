@@ -34,10 +34,13 @@ class SkillMessagingTests(unittest.TestCase):
             fm = frontmatter(skill_path)
             self.assertIn("Microsoft Power Platform", fm, msg=str(skill_path))
             self.assertIn("Dataverse", fm, msg=str(skill_path))
-            self.assertIn("plug-ins", fm, msg=str(skill_path))
-            self.assertIn("PCF controls", fm, msg=str(skill_path))
-        # The top-level pointer specifically positions Core as a coding-agent skill.
-        self.assertIn("coding-agent skill", frontmatter(PLUGIN_ROOT / "SKILL.md"))
+        # The top-level pointer is the marketing entry: it names the concrete surfaces and
+        # positions Core as a coding-agent skill. The orchestrator deliberately defers those
+        # specifics to the domain skills, so they are asserted only on the pointer.
+        pointer = frontmatter(PLUGIN_ROOT / "SKILL.md")
+        self.assertIn("plug-ins", pointer)
+        self.assertIn("PCF controls", pointer)
+        self.assertIn("coding-agent skill", pointer)
 
     def test_core_readme_markets_the_plugin(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")

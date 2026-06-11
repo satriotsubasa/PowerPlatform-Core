@@ -114,8 +114,12 @@ def verify_skill_structure() -> None:
     for manifest in (
         PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
         PLUGIN_ROOT / ".codex-plugin" / "plugin.json",
+        PLUGIN_ROOT / ".cursor-plugin" / "plugin.json",
         ROOT / ".claude-plugin" / "marketplace.json",
         ROOT / ".agents" / "plugins" / "marketplace.json",
+        ROOT / ".cursor-plugin" / "marketplace.json",
+        ROOT / "gemini-extension.json",
+        ROOT / "package.json",
     ):
         if manifest.exists():
             try:

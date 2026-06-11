@@ -55,6 +55,15 @@ Then **install from inside Codex** — there is no `codex plugin add` shell comm
 
 > `marketplace add` only *registers* the source; it never installs — installation happens in the `/plugins` browser. If the plugin doesn't appear there, run `codex plugin marketplace upgrade` and retry.
 
+### More agents (experimental)
+
+The same source also ships manifests for these agents. They follow each platform's documented plugin/extension spec but are **not yet end-to-end tested** here, so treat them as experimental and please report issues.
+
+- **Cursor** - add this repo as a plugin marketplace (Settings -> Plugins -> Team Marketplaces -> Import from Repo), then install `powerplatform-core`. (Cursor installs from its marketplace UI; there is no documented `owner/repo` shell command.)
+- **GitHub Copilot CLI** - `copilot plugin marketplace add satriotsubasa/PowerPlatform-Core` then `copilot plugin install powerplatform-core@powerplatform-core` (Copilot reuses the Claude marketplace catalog; verify the verb with `copilot plugin --help`).
+- **Gemini CLI** - `gemini extensions install https://github.com/satriotsubasa/PowerPlatform-Core` (loads the orchestrator skill; the agent reads the domain skills as files).
+- **OpenCode** - add `"powerplatform-core@git+https://github.com/satriotsubasa/PowerPlatform-Core.git"` to the `plugin` array in your `opencode.json`, then restart.
+
 ### Requirements
 
 The skills are code-first, so the live path needs a small local toolchain:

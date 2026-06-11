@@ -1,0 +1,9 @@
+{
+  "name": "powerplatform-core",
+  "version": "1.1.0",
+  "type": "module",
+  "private": true,
+  "description": "OpenCode plugin entry for the PowerPlatform-Core skills (the plugin itself lives in plugins/powerplatform-core/).",
+  "license": "Apache-2.0",
+  "main": "plugins/powerplatform-core/.opencode/plugins/powerplatform-core.js"
+}

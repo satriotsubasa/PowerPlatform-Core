@@ -1,14 +1,15 @@
 ---
 name: pcf-and-web-resources
 description: >
-  Use for Power Apps component framework (PCF) controls, model-driven web resources, client
-  form scripts, and Power Fx formula review. Covers scaffolding a PCF control, binding it to a
-  form control, building and deploying it through a wrapper solution or direct push, and keeping
-  the manifest version in sync with the wrapper-solution version. Also covers single and batch
-  JavaScript/HTML/CSS/XML/image web resource sync and publish, OnLoad/OnSave/OnChange form
-  handler registration, and Xrm.WebApi client code. Trigger this whenever the user mentions PCF,
-  pcfproj, ControlManifest, `pac pcf`, web resources, form scripts, ribbon JavaScript rules,
-  Xrm/formContext, or wants a Power Fx / canvas formula debugged — even if no helper is named.
+  Use for the client-side surfaces of a model-driven app - Power Apps component framework (PCF)
+  controls, web resources (JS/HTML/CSS/XML/image), client form scripts, and Power Fx formula
+  review. Covers scaffolding a PCF control, binding it to a form control, building/deploying via
+  wrapper solution or direct push, keeping manifest and wrapper-solution versions in sync, single
+  and batch web resource sync/publish, OnLoad/OnSave/OnChange handler registration, and
+  Xrm.WebApi code. Trigger whenever the user mentions PCF, pcfproj, ControlManifest, `pac pcf`,
+  web resources, form scripts, ribbon JavaScript rules, Xrm/formContext, or wants a Power Fx /
+  canvas formula debugged, even if no helper is named. Not for a standalone Vite SPA Code App -
+  use code-apps.
 ---
 
 # PCF and Web Resources

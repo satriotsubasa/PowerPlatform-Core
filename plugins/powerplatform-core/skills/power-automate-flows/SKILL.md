@@ -1,16 +1,17 @@
 ---
 name: power-automate-flows
 description: >
-  Use for ANY solution-aware Power Automate cloud flow task in Dataverse — create, update,
-  inspect, lint, connector governance review, hardening review (retry/concurrency/pagination/
-  idempotency/error handling), HTTP-trigger callback URL resolution, and the environment
-  variables that flows read. Fires whenever the user mentions a cloud flow, Power Automate,
-  a workflow record, flow connection references, a flow trigger URL or webhook callback,
-  "lint my flow", "harden this flow", "review the connectors", or "why did my flow change
-  behavior" — even if no helper is named. Updates only the changed `workflow` properties and
-  treats semantic drift (emptied branches, dropped switch cases, removed required actions) as
-  a blocker by default. Run the live-mutation preflight from the `powerplatform-core`
-  orchestrator before any create, update, activate, or environment-variable write.
+  Use for solution-aware Power Automate cloud flows in Dataverse - create, update, inspect,
+  lint, connector governance review, hardening review (retry/concurrency/pagination/idempotency/
+  error handling), HTTP-trigger callback URL resolution, and the environment variables flows
+  read. Fires whenever the user mentions a cloud flow, Power Automate, a workflow record, flow
+  connection references, a flow trigger URL or webhook callback, "lint my flow", "harden this
+  flow", "review the connectors", or "why did my flow change behavior", even if no helper is
+  named. Patches only the changed `workflow` properties and blocks semantic drift (emptied
+  branches, dropped switch cases, removed required actions) by default. Not for C# plug-ins or
+  custom APIs - use plugins-server-extensions. Run the live-mutation preflight from the
+  `powerplatform-core` orchestrator before any create, update, activate, or environment-variable
+  write.
 ---
 
 # Power Automate Flows — Solution-Aware Cloud Flows
