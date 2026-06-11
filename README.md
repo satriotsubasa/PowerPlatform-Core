@@ -1,275 +1,141 @@
 # PowerPlatform-Core
 
-PowerPlatform-Core is a coding-agent skill for Microsoft Power Platform and Dataverse development. Type or ask for `$powerplatform-core` in Codex when you want an agent to read a repo, understand model-driven app and solution structure, and safely build, validate, and deliver source-controlled changes such as plug-ins, PCF controls, web resources, form metadata, RibbonDiffXml, solution-aware flows, Dataverse schema, and configuration data.
-
-It turns Power Platform work into a repo-first development workflow: discover the project shape, choose the right implementation surface, make reviewable code or metadata changes, run a live mutation preflight, and deploy only through an approved targeted path unless the user explicitly accepts a broader blast radius.
-
-This repository is the public, repo-agnostic base skill. It is meant to work across unfamiliar Power Platform and Dataverse repos, including:
-
-- layered code-centric repos
-- unpacked-solution repos
-- mixed or ambiguous repos
-- sparse repos with little or no existing structure
-
-Opinionated house conventions belong in overlay repos, not here.
-
-## How It Works
-
-1. It can discover repo context from `.sln` files, `WebResources/`, `Dataverse/`, `*.Plugins`, `*.Data`, PCF projects, solution XML, project profiles, and PAC context when needed.
-2. It selects the development surface: client script, plug-in, custom API, PCF, form metadata, RibbonDiffXml, flow, Dataverse schema, config data, or solution ALM.
-3. It favors source-controlled edits and deterministic helpers over maker-portal memory or browser automation.
-4. It runs a live mutation preflight that names the environment, PAC profile, target solution, exact components, delivery primitive, artifact source, blast radius, timeout, and rollback path.
-5. It validates and deploys through approved targeted paths first, such as web resource sync, plug-in push, form/ribbon patch helpers, PCF wrapper deployment, flow update helpers, or keyed data upsert.
-
-## What Core Owns
-
-Core is the maintenance home for:
-
-- generic skill contract in `SKILL.md`
-- generic references in `references/`
-- generic helper scripts in `scripts/`
-- generic tools in `tools/`
-- generic regression tests in `tests/`
-- generic packaging and install behavior
-
-Current overlay relationship:
-
-- `powerplatform-core` installs directly from this repo
-- Overlay extensions install as separate layers on top of this runtime
-- House-style conventions are overlay-owned and are not shipped as Core references
-
-That overlay note is informational only. Core remains a standalone, generic skill for broader Power Platform use.
-
-## Current Capabilities
-
-Core currently supports:
-
-- repo discovery and context inference through `scripts/discover_context.py`
-- auth gating and selected-solution confirmation through `scripts/auth_context.py`
-- Dataverse row create, update, and upsert
-- metadata creation and update helpers for tables, fields, lookups, forms, views, icons, and solution component placement
-- security role inspect, create, and update helpers with solution-aware role privilege sync
-- environment variable inspect and live value-set helpers
-- client customization helpers for form-event registration, web resource sync, and PCF binding
-- server-extension helpers for custom APIs, first-time plug-in registration, and repeatable plug-in push
-- PCF scaffolding, versioning, packaging, and deployment
-- solution-aware cloud flow inspect, lint, create, update, signed HTTP trigger URL retrieval, and hardening review
-- document-generation inspection and planning
-- solution deployment and delivery validation
-- coordinated multi-step execution through `scripts/apply_requirement_spec.py`
-- Power Apps Code App build and push via `scripts/push_code_app.py`, with automatic `power.config.json` detection in `scripts/discover_context.py`
-
-For the fuller maintainer-oriented capability breakdown that used to live in the long README, see [docs/capability-matrix.md](docs/capability-matrix.md).
-
-Core guidance now also explicitly covers:
-
-- choosing the right implementation surface through [references/execution-surface-guide.md](references/execution-surface-guide.md)
-- command-bar and RibbonDiffXml safety: use web-resource-only deploys for existing command logic, reserve `patch_form_ribbon.py` for form-level metadata, and route new entity commands/buttons/rules through fresh package recovery with version bump and read-back verification
-- completion evidence and partial-failure recovery through [references/verification-and-recovery.md](references/verification-and-recovery.md)
-- immutable stable keys, source-system-qualified provenance, and honest dry-run boundaries in data operations
-- explicit deployment closeout that distinguishes repo-ready from environment-updated state
-- deployment preflight, timeout budgets, and fast-fail manual fallback through `deploymentDefaults` in the project profile and `scripts/apply_requirement_spec.py`
-
-## Design Principles
-
-- Keep the skill generic. Do not hardcode one tenant, one publisher prefix, one namespace pattern, or one repo layout.
-- Keep presentation and configuration work in metadata when possible.
-- For executable logic, prefer code-managed surfaces. Use client script for form-scoped behavior and plug-ins or custom APIs for shared server-side behavior.
-- Do not choose Dataverse Business Rules as an implementation surface in this skill.
-- Prefer repo-backed and headless-first execution over browser automation.
-- Surface PAC-profile versus requested-target mismatches before live work instead of silently assuming the currently selected PAC environment is correct.
-- Keep changes solution-scoped.
-- Ask before delete, import, publish, register, push, or upgrade.
-- Treat project context as runtime input, not fixed skill configuration.
-- Optimize user waiting time, not just eventual task completion. Fail fast when preflight says the surface is manual-only, unsupported, or timed out.
-
-## Repo Layout
-
-Important top-level paths:
-
-- `SKILL.md`: skill contract and workflow
-- `agents/`: UI metadata
-- `references/`: generic working guidance
-- `scripts/`: Python helper entry points
-- `tools/`: shared .NET tools
-- `tests/`: repo-local regression coverage
-- `docs/core-overlay-architecture.md`: Core vs overlay ownership
-- `verify_repo.py`: canonical local verification entry point
-
-## Verification
-
-Canonical local verification:
-
-```powershell
-python .\verify_repo.py
-```
-
-That command currently runs:
-
-- Python syntax checks across `scripts/`, `tests/`, and `verify_repo.py`
-- `python -m unittest discover -s tests -v`
-- `dotnet build` for both tool projects
-- `quick_validate.py` when the local Codex `skill-creator` validator is available
-
-Useful options:
-
-```powershell
-python .\verify_repo.py --skip-dotnet
-python .\verify_repo.py --skip-quick-validate
-```
-
-The unit suite now includes lightweight acceptance scenarios for these representative repo shapes:
-
-- layered hybrid repos
-- unpacked-solution-first repos
-- ambiguous mixed repos
-- tool-only repos
-- sparse repos with no established structure
-
-## Installing The Skill
-
-Local install:
-
-```powershell
-.\install-skill.ps1
-```
-
-Local update:
-
-```powershell
-.\update-skill.ps1
-```
-
-GitHub-based install:
-
-```powershell
-.\install-skill.ps1 -Source GitHub
-.\update-skill.ps1 -Source GitHub
-```
-
-Installed runtime payload includes only:
-
-- `SKILL.md`
-- `agents/`
-- `assets/`
-- `references/`
-- `scripts/`
-- `tools/`
-
-Repo-only files such as `README.md`, `CODEX_HANDOFF.md`, `tests/`, and repo maintenance scripts stay in the source repo and are not copied into the installed skill.
-
-## Using The Skill
-
-Example prompts:
-
-```text
-Use $powerplatform-core to inspect this repo and infer the likely Dataverse solution, source areas, and plug-in project.
-Use $powerplatform-core to create a new Dataverse table and expose it in the target model-driven app.
-Use $powerplatform-core to update a form script, sync the web resource, and register the handler.
-Use $powerplatform-core to package and deploy a PCF control from this repo.
-Use $powerplatform-core to execute this requirement spec end to end.
-```
-
-When the repo is unfamiliar, start by running:
-
-```powershell
-python .\scripts\discover_context.py --path .
-```
-
-For exact helper arguments, use each script's CLI help:
-
-```powershell
-python .\scripts\deploy_solution.py --help
-python .\scripts\deploy_pcf.py --help
-python .\scripts\upsert_data.py --help
-python .\scripts\get_flow_trigger_url.py --help
-```
-
-## Standalone vs. Extension Mode
-
-PowerPlatform-Core can be used in two ways depending on your needs.
-
-### Standalone (Core only)
-
-Install this skill and use it directly against any Power Platform or Dataverse repo. No other skill is required. This is the recommended starting point for most users.
-
-```powershell
-.\install-skill.ps1
-```
-
-Then invoke it in Codex:
-
-```text
-Use $powerplatform-core to inspect this repo and infer the solution structure.
-```
-
-Core is generic by design — it works across unfamiliar repos, mixed layouts, and varying namespace conventions without any configuration.
-
-### With an Overlay Extension
-
-An overlay extension is a separate skill that layers house-style conventions, project-specific references, and team-specific defaults on top of Core. The overlay is installed as its own skill and replaces the `$powerplatform-core` prompt with its own skill token.
-
-If you are working in a repo that has an accompanying overlay skill:
-
-1. Install Core first:
-   ```powershell
-   # From this repo
-   .\install-skill.ps1
-   ```
-
-2. Install the overlay skill from its own repo:
-   ```powershell
-   # From the overlay repo
-   .\install-skill.ps1
-   ```
-
-3. Use the overlay skill token instead of `$powerplatform-core`:
-   ```text
-   Use the overlay skill token to inspect this repo.
-   ```
-
-The overlay skill bundles Core's runtime files together with its own files into a single merged skill. Core's generic capabilities are fully available through the overlay — you do not need to invoke both.
-
-### How to tell which one to use
-
-| Situation | Use |
-|-----------|-----|
-| Any generic Power Platform / Dataverse repo | `$powerplatform-core` standalone |
-| Repo that follows a specific team's house conventions | That team's overlay skill |
-| Unfamiliar repo, no overlay available | `$powerplatform-core` standalone |
-| Building your own overlay extension | See [docs/core-overlay-architecture.md](docs/core-overlay-architecture.md) |
+**A code-first coding-agent plugin that turns Microsoft Power Platform & Dataverse work into a safe, source-controlled, repo-first workflow.**
+
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](#install)
+[![OpenAI Codex](https://img.shields.io/badge/OpenAI%20Codex-plugin-412991.svg)](#install)
+[![Cross-platform](https://img.shields.io/badge/Cross--platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2ea44f.svg)](#requirements)
+[![Built with](https://img.shields.io/badge/Built%20with-Python%20%C2%B7%20.NET%208-149CA1.svg)](#how-its-built)
 
 ---
 
-## Current Boundaries
+## What & why
 
-Core intentionally does not:
+Power Platform changes are easy to make and hard to make *safely* — a single stale ZIP or an accidental whole-solution import can quietly overwrite other people's work. PowerPlatform-Core gives a coding agent the judgment to avoid that: it reads your repo, understands your model-driven app and solution structure, picks the right development surface, makes reviewable source-controlled edits, and ships them through the narrowest delivery path behind a **mandatory live-mutation preflight**.
 
-- assume one house repo structure
-- assume one namespace style
-- ship overlay-owned house-style references
-- imply that `scripts/upsert_data.py` supports a generic dry-run mode when it does not
-- default to browser automation when repo-backed or headless paths exist
+It is deliberately generic. It works across unfamiliar repos — layered code-centric, unpacked-solution, mixed, or near-empty — without assuming any one team's house convention, publisher prefix, or folder layout.
 
-Some capabilities still remain partly workflow-driven rather than fully helper-packaged, especially:
+## Highlights
 
-- bespoke XML surgery
-- highly repo-specific architecture decisions
-- environment-specific acceptance testing
-- document-template authoring that depends on one team's conventions
+- 🧭 **11 modular skills that trigger precisely** — an orchestrator routes each task (schema, data, flows, plug-ins, PCF, code apps, ALM, security, docs, connectors) to exactly the right specialist.
+- 🛡️ **Safe by default** — every live mutation passes a preflight gate; stale artifacts are blocked; targeted delivery is preferred over whole-solution imports.
+- ⌨️ **Headless / code-first** — repo edits, SDK/Web API, solution files, and the `pac` CLI come first; browser automation is an opt-in last resort.
+- 🤝 **Multi-agent** — one shared source installs as both a **Claude Code** plugin and an **OpenAI Codex** plugin.
+- 🌐 **Cross-platform live path** — the runtime works on Windows *and* macOS/Linux (WAM broker sign-in on Windows, device-code flow elsewhere).
 
-## Maintainer Notes
+## Install
 
-- Make generic changes here first.
-- Keep overlay-specific prompts, examples, and conventions out of Core.
-- If a repo already has a safe deploy wrapper, Core may use it, but Core should not prescribe one project-specific wrapper shape as a default.
-- Keep `README.md` focused on overview, install, verification, and maintenance boundaries.
-- Keep `CODEX_HANDOFF.md` focused on current repo state and in-flight work, not static capability manuals.
+PowerPlatform-Core installs from one shared source into either agent.
 
-## Next Recommended Work
+### Claude Code
 
-The only current tracked follow-on is issue `#19`:
+```text
+/plugin marketplace add satriotsubasa/PowerPlatform-Core
+/plugin install powerplatform-core@powerplatform-core
+```
 
-- optional Azure control-plane reference as a secondary path
+> The marketplace commands above resolve once the plugin is on the repo's default branch. To try a **local checkout** instead, launch with `claude --plugin-dir "<path-to-repo>"`, or run `/plugin marketplace add "<path-to-repo>"` pointed at your clone.
 
-That remains explicitly optional and deferred behind the generic Core acceptance and verification foundation.
+### OpenAI Codex
+
+```text
+codex plugin marketplace add satriotsubasa/PowerPlatform-Core
+codex plugin add powerplatform-core
+```
+
+> The exact subcommand can vary by Codex version — confirm with `codex plugin --help` if either line is rejected.
+
+### Requirements
+
+The skills are code-first, so the live path needs a small local toolchain:
+
+| Tool | Why |
+| --- | --- |
+| **Python 3.10+** | Runs the helper scripts that drive every live operation. |
+| **.NET 8 SDK** | Builds and runs the shared `DataverseOps` execution tool (and plug-in projects). |
+| **Node.js** | Required for PCF controls and Power Apps Code Apps (`npm` / `npx`). |
+| **Microsoft Power Platform CLI (`pac`)** | Authentication, solution, and deployment operations. |
+
+Interactive sign-in is platform-aware: on **Windows** it uses the WAM broker; on **macOS/Linux** it falls back to the **device-code flow** (the tool prints a code to complete in a browser).
+
+## The skills
+
+Start with the **orchestrator** — `powerplatform-core` — which discovers repo context, chooses the development surface, enforces the safety rules, and routes to the right specialist below. You rarely need to name a skill yourself; the agent picks one from your prompt.
+
+| Skill | What it does |
+| --- | --- |
+| **`powerplatform-core`** | 🧭 Orchestrator. Discovers repo context, picks the surface, enforces the live-mutation preflight, and routes to the right domain skill. |
+| **`dataverse-schema`** | Tables, columns, lookups, choices, alternate keys, forms, views, the form ribbon (RibbonDiffXml), and table icons — plus up-front schema/query design. |
+| **`data-operations`** | Row create / update / upsert, config-data seeding and sync, and query design across OData, FetchXML, and Power Automate "List rows". |
+| **`power-automate-flows`** | Solution-aware cloud flows: create, update, inspect, lint, connector & hardening review, and HTTP-trigger callback URL resolution. |
+| **`plugins-server-extensions`** | C# plug-ins and custom APIs: headless registration, repeatable build-and-push, step inspection, and step-state reconciliation. |
+| **`pcf-and-web-resources`** | PCF controls, web resources, client form scripts, and Power Fx review — scaffold, version, build, deploy, and bind. |
+| **`code-apps`** | Power Apps Code Apps (the pro-code Vite + `@microsoft/power-apps` SPA model): scaffold, add data sources, build, and push. |
+| **`solution-alm-delivery`** | The safety-critical delivery skill: pack/import/deploy, component placement, versioning, patch/merge/upgrade planning, and standards review. |
+| **`security-roles`** | Inspect, create, and update Dataverse security roles and privilege sets as reviewable, solution-aware desired state. |
+| **`document-generation`** | Word Template document generation: inventory content controls, map placeholders, and plan template-aware changes. |
+| **`custom-connectors`** | Design custom connectors and integration wrappers — auth shape, operation inventory, and direct-connector vs. Azure-facade recommendation. |
+
+## Quickstart
+
+Just describe the outcome you want. The agent discovers context, opens the matching skill, and runs the preflight before any live change.
+
+```text
+Add a Dataverse table for "Service Visit" and surface it in the target model-driven app.
+```
+> Routes to `dataverse-schema`, designs the table/columns, then checks solution and app exposure — preflight before any write.
+
+```text
+Package and deploy this PCF control from the repo.
+```
+> Routes to `pcf-and-web-resources`, syncs the manifest + wrapper versions, builds, and deploys via the targeted path — not a whole-solution import.
+
+```text
+Harden this cloud flow and resolve its HTTP trigger URL.
+```
+> Routes to `power-automate-flows`, runs the hardening review, patches only the changed `workflow` properties, and resolves the signed callback URL — preflight before the update.
+
+## Safety by default
+
+The thing that makes this plugin different from "an agent with `pac` access" is its refusal to do the dangerous-but-easy thing:
+
+- **Mandatory live-mutation preflight.** Before *any* deploy, publish, import, registration, push, or data write, the agent prints a gate naming the target environment, PAC profile (and any mismatch), target solution, exact components, delivery primitive, artifact provenance, blast radius, rollback plan, and timeout. If a required field is missing, it stops.
+- **Stale-artifact blocking.** It will not import a ZIP from `bin`, `Release`, `Downloads`, or a temp folder unless that package was generated in-session or you explicitly selected it. Multiple candidate packages → it stops and asks.
+- **Targeted delivery first.** It prefers the narrowest primitive — web-resource sync, plug-in push, form/ribbon patch, PCF wrapper deploy, keyed upsert — and **never silently escalates** a targeted change into a whole-solution import (a slow, high-blast-radius path that needs explicit approval).
+
+## How it's built
+
+PowerPlatform-Core is packaged as a plugin of modular skills over a shared toolchain:
+
+- **An orchestrator + 10 domain skills** under `skills/`, each with a focused, precisely triggering description.
+- **A shared toolchain at the plugin root**, resolved via `$CLAUDE_PLUGIN_ROOT` / `$CODEX_PLUGIN_ROOT`:
+  - **`scripts/`** — Python helper entry points that drive every live operation.
+  - **`tools/`** — a .NET 8 `DataverseOps` execution tool (connection checks, row/metadata ops, flows, plug-ins, web resources, solutions) plus a Windows auth dialog.
+  - **`references/`** — a knowledge base on surface selection, ALM, metadata, verification, and repo archetypes that the skills cite as needed.
+
+For the full picture, see [`docs/core-overlay-architecture.md`](docs/core-overlay-architecture.md) and the maintainer-oriented [`docs/capability-matrix.md`](docs/capability-matrix.md).
+
+## Standalone vs. overlay
+
+PowerPlatform-Core is the public, **repo-agnostic base** and is designed to be used directly — install it and point it at any Power Platform or Dataverse repo, no configuration required. That is the right choice for most users and unfamiliar repos.
+
+An **overlay** is a separate skill that layers one team's house-style conventions, references, and defaults on top of Core, bundling Core's runtime into a single merged skill. If your repo follows a specific team's conventions and an overlay exists, use that team's skill token; otherwise use Core. Building your own overlay is covered in [`docs/core-overlay-architecture.md`](docs/core-overlay-architecture.md).
+
+## Develop & verify
+
+Contributing or running a local checkout? One command verifies the whole repo:
+
+```bash
+python verify_repo.py
+```
+
+It runs Python syntax checks, the `unittest` suite, the skill-structure and manifest checks, the .NET build/tests for `DataverseOps`, and the skill-creator quick validator when available. Cross-platform: the Windows-only WPF auth dialog is skipped automatically on macOS/Linux.
+
+Maintainer detail — capability boundaries, current limitations, and the helper backlog — lives in [`docs/development.md`](docs/development.md).
+
+## License
+
+Apache-2.0 — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+© 2026 Satrio Tsubasa.

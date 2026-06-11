@@ -40,6 +40,7 @@ def main() -> int:
 
     if not args.skip_python:
         run_step("Python syntax", verify_python_sources)
+    run_step("Skill structure", verify_skill_structure)
     if not args.skip_tests:
         run_step("Unit tests", lambda: run_command([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]))
     if not args.skip_dotnet:
@@ -90,6 +91,36 @@ def iter_python_sources() -> list[Path]:
             sorted(path for path in directory.rglob("*.py") if "__pycache__" not in path.parts)
         )
     return paths
+
+
+def verify_skill_structure() -> None:
+    import json
+
+    skills_dir = ROOT / "skills"
+    if skills_dir.exists():
+        skill_files = sorted(skills_dir.glob("*/SKILL.md"))
+        if not skill_files:
+            raise RuntimeError("skills/ exists but contains no <name>/SKILL.md files.")
+        for path in skill_files:
+            text = path.read_text(encoding="utf-8")
+            if not text.startswith("---"):
+                raise RuntimeError(f"{path} is missing YAML frontmatter.")
+            frontmatter = text.split("---", 2)[1]
+            if "name:" not in frontmatter or "description:" not in frontmatter:
+                raise RuntimeError(f"{path} frontmatter must define both name and description.")
+            if f"name: {path.parent.name}" not in frontmatter:
+                raise RuntimeError(f"{path} frontmatter name must match its folder '{path.parent.name}'.")
+    for manifest in (
+        ROOT / ".claude-plugin" / "plugin.json",
+        ROOT / ".claude-plugin" / "marketplace.json",
+        ROOT / ".codex-plugin" / "plugin.json",
+        ROOT / ".agents" / "plugins" / "marketplace.json",
+    ):
+        if manifest.exists():
+            try:
+                json.loads(manifest.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"{manifest} is not valid JSON: {exc}") from exc
 
 
 def verify_dotnet_projects() -> None:
