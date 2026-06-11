@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "powerplatform-core",
-      "source": "./",
+      "source": "./plugins/powerplatform-core",
       "description": "Coding-agent skill for Microsoft Power Platform and Dataverse development.",
       "version": "1.0.0",
       "author": {

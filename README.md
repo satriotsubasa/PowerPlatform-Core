@@ -1,12 +1,20 @@
-# PowerPlatform-Core
+<p align="center">
+  <img src="plugins/powerplatform-core/assets/logo.png" alt="PowerPlatform-Core logo" width="150">
+</p>
 
-**A code-first coding-agent plugin that turns Microsoft Power Platform & Dataverse work into a safe, source-controlled, repo-first workflow.**
+<h1 align="center">PowerPlatform-Core</h1>
 
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
-[![Claude Code](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](#install)
-[![OpenAI Codex](https://img.shields.io/badge/OpenAI%20Codex-plugin-412991.svg)](#install)
-[![Cross-platform](https://img.shields.io/badge/Cross--platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2ea44f.svg)](#requirements)
-[![Built with](https://img.shields.io/badge/Built%20with-Python%20%C2%B7%20.NET%208-149CA1.svg)](#how-its-built)
+<p align="center">
+  <strong>A code-first coding-agent plugin that turns Microsoft Power Platform &amp; Dataverse work into a safe, source-controlled, repo-first workflow.</strong>
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache--2.0-blue.svg"></a>
+  <a href="#install"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg"></a>
+  <a href="#install"><img alt="OpenAI Codex" src="https://img.shields.io/badge/OpenAI%20Codex-plugin-412991.svg"></a>
+  <a href="#requirements"><img alt="Cross-platform" src="https://img.shields.io/badge/Cross--platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-2ea44f.svg"></a>
+  <a href="#how-its-built"><img alt="Built with" src="https://img.shields.io/badge/Built%20with-Python%20%C2%B7%20.NET%208-149CA1.svg"></a>
+</p>
 
 ---
 
@@ -41,10 +49,11 @@ PowerPlatform-Core installs from one shared source into either agent.
 
 ```text
 codex plugin marketplace add satriotsubasa/PowerPlatform-Core
-codex plugin add powerplatform-core
 ```
 
-> The exact subcommand can vary by Codex version — confirm with `codex plugin --help` if either line is rejected.
+Then **install from inside Codex** — there is no `codex plugin add` shell command. Launch `codex`, run `/plugins`, open **powerplatform-core** in the list, choose **Install plugin**, then **restart Codex**.
+
+> `marketplace add` only *registers* the source; it never installs — installation happens in the `/plugins` browser. If the plugin doesn't appear there, run `codex plugin marketplace upgrade` and retry.
 
 ### Requirements
 
@@ -58,6 +67,8 @@ The skills are code-first, so the live path needs a small local toolchain:
 | **Microsoft Power Platform CLI (`pac`)** | Authentication, solution, and deployment operations. |
 
 Interactive sign-in is platform-aware: on **Windows** it uses the WAM broker; on **macOS/Linux** it falls back to the **device-code flow** (the tool prints a code to complete in a browser).
+
+> **Migrating from the classic skill?** The old `~/.codex/skills/powerplatform-core` copy-install is deprecated; the plugin replaces it. Once the plugin loads in Codex, delete that folder to avoid a duplicate `powerplatform-core` skill.
 
 ## The skills
 

@@ -26,8 +26,8 @@
     "longDescription": "Generic, code-first skill for Microsoft Power Platform and Dataverse. Discovers repo context, picks the right development surface (metadata, client script, plug-in, custom API, flow, PCF, or solution ALM), applies repo-backed changes, and delivers them through safe, targeted paths behind a mandatory live-mutation preflight. Works without assuming any one house repo convention.",
     "category": "Coding",
     "brandColor": "#149CA1",
-    "composerIcon": "./assets/power-platform-uploaded-exact.png",
-    "logo": "./assets/power-platform-uploaded-exact.png",
+    "composerIcon": "./assets/logo.png",
+    "logo": "./assets/logo.png",
     "defaultPrompt": [
       "Read this repo, understand the Power Platform and Dataverse solution structure, and tell me the safest way to deliver my change.",
       "Build and deploy this plug-in / PCF / flow change with the required live-mutation preflight."
