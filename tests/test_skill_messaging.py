@@ -43,6 +43,18 @@ class SkillMessagingTests(unittest.TestCase):
         self.assertIn("do not try the form-ribbon helper first", client_reference)
         self.assertIn("bump version before import", execution_reference)
 
+    def test_core_managed_promotion_audit_requires_readback(self) -> None:
+        skill_text = (REPO_ROOT / "SKILL.md").read_text(encoding="utf-8")
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        verification_reference = (REPO_ROOT / "references" / "verification-and-recovery.md").read_text(encoding="utf-8")
+
+        self.assertIn("Managed Promotion Audit", skill_text)
+        self.assertIn("--promotion-audit-spec", skill_text)
+        self.assertIn("source or DEV expected state", verification_reference)
+        self.assertIn("target live read-back", verification_reference)
+        self.assertIn("solution version", readme)
+        self.assertIn("not completion proof", readme)
+
 
 if __name__ == "__main__":
     unittest.main()

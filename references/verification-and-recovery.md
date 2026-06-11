@@ -28,6 +28,28 @@ Use the narrowest relevant set of layers for the task:
 
 If a layer did not happen, report that it did not happen. Do not fill the gap with optimistic wording.
 
+## Managed Promotion Audit
+
+For managed promotion, do not treat installed solution version or import success as proof that the effective target metadata changed. Before declaring a validation or later environment aligned, produce a promotion audit with these layers:
+
+1. source or DEV expected state
+2. managed package evidence from the fresh ZIP contents or unpacked package
+3. target live read-back after import and publish
+
+Use `scripts/validate_delivery.py --promotion-audit-spec ...` when the evidence can be represented as JSON. The audit should return one row per expected component with source evidence, package evidence, target read-back evidence, status, and remediation recommendation.
+
+Require explicit target read-back for high-risk metadata when it is in scope:
+
+- command bars and RibbonDiffXml
+- table labels and core table metadata
+- forms and views
+- flows
+- security roles
+- plug-in assemblies and steps
+- configuration rows
+
+If source and package evidence match but target read-back is stale, stop broad re-import loops. Run targeted publish and read-back first. If the target remains stale, inspect solution layers and choose the narrowest approved remediation.
+
 ## What Counts As Proof
 
 ### Source or artifact evidence

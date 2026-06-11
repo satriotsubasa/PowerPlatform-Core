@@ -39,6 +39,20 @@ If the delivery primitive becomes solution import, stop before import and state 
 
 Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unless it was generated in the current session or explicitly selected by the user. If multiple package candidates exist, stop and ask. Do not silently escalate from a targeted helper to solution import.
 
+## Managed Promotion Audit
+
+For managed promotion from a working environment to a validation or later environment, package version and import success are not enough proof. Before closeout, produce a promotion audit with `scripts/validate_delivery.py --promotion-audit-spec ...` or the same fields manually.
+
+Required evidence:
+
+- source or DEV expected state for each release component
+- managed package evidence from the fresh ZIP contents or unpacked package
+- target live read-back after import and publish
+- status per component: aligned, source mismatch, package mismatch, target stale, missing target read-back, incomplete evidence, or needs review
+- remediation recommendation for every non-aligned component
+
+Always require explicit target read-back for high-risk metadata when in scope: command bars or RibbonDiffXml, table labels, forms, views, flows, security roles, plug-in steps, and configuration rows. If the target solution version updated but live effective metadata is stale, do not keep re-importing blindly. Try targeted publish and read-back first, inspect solution layers when stale state remains, then use the narrowest approved remediation.
+
 ## Deployment And Pull Decision Matrix
 
 | Task | Preferred primitive | Stop condition |
@@ -74,7 +88,8 @@ Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unle
 11. Open [references/execution-surface-guide.md](references/execution-surface-guide.md) when deciding between metadata, client script, plug-ins, custom APIs, flows, HTML web resources, or PCF.
 12. Open [references/verification-and-recovery.md](references/verification-and-recovery.md) when the task will mutate live Dataverse state, includes deployment, publish, import, registration, or repo-versus-live reconciliation work, or needs a precise completion standard before execution starts.
 13. Before live deployment, run the mandatory live mutation preflight: asset type, chosen primitive, exact components, artifact source, targeted support, manual-only status, timeout budget, fallback path, and blast radius. Prefer `scripts/validate_delivery.py --preflight-spec ...` for a single gate or `scripts/apply_requirement_spec.py` for coordinated requirements.
-14. Open only the task-specific references you need:
+14. Before managed promotion closeout, run the managed promotion audit for expected components, package evidence, and target live read-back. Treat import success and solution version alone as insufficient for high-risk metadata.
+15. Open only the task-specific references you need:
    - [references/dataverse-design.md](references/dataverse-design.md) for requirement-to-schema design, alternate keys, and query-shape planning before metadata execution.
    - [references/dataverse-metadata.md](references/dataverse-metadata.md) for tables, columns, relationships, forms, views, and icons.
    - [references/data-operations.md](references/data-operations.md) for Dataverse row create, update, and upsert work.
@@ -90,24 +105,24 @@ Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unle
    - [references/document-generation.md](references/document-generation.md) for Word Templates, content controls, and document-generation change planning.
    - [references/queries-and-xml.md](references/queries-and-xml.md) for Power Automate Dataverse queries, OData, FetchXML, LayoutXML, and solution XML.
    - [references/code-apps.md](references/code-apps.md) for Power Apps Code Apps — architecture, Vite scaffold, Dataverse data source integration, CRUD patterns, ALM, and admin setup. If `discover_context.py` returns multiple entries in `code_apps` (multi-app `CodeApp/` folder pattern), list them and ask the user which app to target before running any build or push operation. Use `scripts/push_code_app.py --all` to push all apps in sequence.
-15. Keep every change solution-scoped. This means add or update only the scoped components in the target unmanaged solution or selected patch. It does not mean defaulting to solution package import.
-16. Prefer the automation ladder in [references/execution-automation.md](references/execution-automation.md): repo edits, SDK or Web API, solution XML, `pac` CLI, and direct deployment tools. Do not choose browser automation unless the user explicitly approves a fallback after headless options are exhausted.
-17. Prefer reusable helper scripts in `scripts/` when they already cover the task. Current helpers include `discover_context.py`, `auth_context.py`, `ensure_dataverse_reference.py`, `apply_requirement_spec.py`, `whoami.py`, `upsert_data.py`, `create_table.py`, `create_field.py`, `create_lookup.py`, `inspect_flow.py`, `lint_flow.py`, `review_flow_hardening.py`, `review_flow_connectors.py`, `create_flow.py`, `update_flow.py`, `get_flow_trigger_url.py`, `inspect_environment_variable.py`, `set_environment_variable_value.py`, `design_dataverse_schema.py`, `design_dataverse_query.py`, `review_solution_standards.py`, `debug_power_fx.py`, `design_custom_connector.py`, `plan_document_generation.py`, `plan_solution_patch_merge.py`, `update_main_form.py`, `patch_form_xml.py`, `patch_form_ribbon.py`, `update_form_events.py`, `bind_pcf_control.py`, `update_view.py`, `set_table_icon.py`, `sync_webresource.py`, `sync_webresources_batch.py`, `inspect_word_templates.py`, `create_custom_api.py`, `inspect_security_role.py`, `create_security_role.py`, `update_security_role.py`, `inspect_plugin_steps.py`, `ensure_plugin_step_state.py`, `register_plugin_headless.py`, `register_plugin_package_headless.py`, `scaffold_pcf_control.py`, `deploy_pcf.py`, `version_pcf_solution.py`, `add_solution_components.py`, `solution_version.py`, `deploy_solution.py`, `validate_delivery.py`, and `push_plugin.py`, and `push_code_app.py`.
-18. When a capability is not yet a helper, decide explicitly whether it belongs in:
+16. Keep every change solution-scoped. This means add or update only the scoped components in the target unmanaged solution or selected patch. It does not mean defaulting to solution package import.
+17. Prefer the automation ladder in [references/execution-automation.md](references/execution-automation.md): repo edits, SDK or Web API, solution XML, `pac` CLI, and direct deployment tools. Do not choose browser automation unless the user explicitly approves a fallback after headless options are exhausted.
+18. Prefer reusable helper scripts in `scripts/` when they already cover the task. Current helpers include `discover_context.py`, `auth_context.py`, `ensure_dataverse_reference.py`, `apply_requirement_spec.py`, `whoami.py`, `upsert_data.py`, `create_table.py`, `create_field.py`, `create_lookup.py`, `inspect_flow.py`, `lint_flow.py`, `review_flow_hardening.py`, `review_flow_connectors.py`, `create_flow.py`, `update_flow.py`, `get_flow_trigger_url.py`, `inspect_environment_variable.py`, `set_environment_variable_value.py`, `design_dataverse_schema.py`, `design_dataverse_query.py`, `review_solution_standards.py`, `debug_power_fx.py`, `design_custom_connector.py`, `plan_document_generation.py`, `plan_solution_patch_merge.py`, `update_main_form.py`, `patch_form_xml.py`, `patch_form_ribbon.py`, `update_form_events.py`, `bind_pcf_control.py`, `update_view.py`, `set_table_icon.py`, `sync_webresource.py`, `sync_webresources_batch.py`, `inspect_word_templates.py`, `create_custom_api.py`, `inspect_security_role.py`, `create_security_role.py`, `update_security_role.py`, `inspect_plugin_steps.py`, `ensure_plugin_step_state.py`, `register_plugin_headless.py`, `register_plugin_package_headless.py`, `scaffold_pcf_control.py`, `deploy_pcf.py`, `version_pcf_solution.py`, `add_solution_components.py`, `solution_version.py`, `deploy_solution.py`, `validate_delivery.py`, and `push_plugin.py`, and `push_code_app.py`.
+19. When a capability is not yet a helper, decide explicitly whether it belongs in:
    - a deterministic dedicated helper
    - a carefully designed helper with a stronger spec format
    - the workflow layer with existing helpers underneath
    Use [references/helper-strategy.md](references/helper-strategy.md) instead of leaving the boundary implicit.
-19. Prefer supported makers tools, CLI, SDK, and client APIs over unsupported DOM hacks or direct database assumptions. Edit raw XML only when the task explicitly requires it or when the source-controlled artifact is already XML.
-20. Validate the narrowest relevant surface:
+20. Prefer supported makers tools, CLI, SDK, and client APIs over unsupported DOM hacks or direct database assumptions. Edit raw XML only when the task explicitly requires it or when the source-controlled artifact is already XML.
+21. Validate the narrowest relevant surface:
    - Solution work: inspect unpacked diffs, or run `pac solution sync`, `pack`, `unpack`, or `check` when appropriate.
    - Plug-ins: restore and build, then confirm step registration assumptions.
    - PCF: install dependencies, build, confirm manifest metadata, and when a wrapper `Solutions` project exists confirm the package artifact path and version alignment.
    - Client scripts: verify handler signatures, logical names, and build output if TypeScript is used.
    - Query or automation changes: verify logical names, null handling, and filter syntax.
-21. Keep `CODEX_HANDOFF.md` current when work spans major milestones, architecture decisions, environment execution, or repo structure changes.
-22. If the thread becomes long or context feels tight, notify the user before any recap or compaction and update `CODEX_HANDOFF.md` first. Do not pretend an exact context percentage is available; use a conservative heuristic.
-23. Report exactly what changed, what was inferred from the repo or discovery script, what was executed automatically, what was verified, what still requires environment access, and which publish, import, or registration steps were intentionally not performed.
+22. Keep `CODEX_HANDOFF.md` current when work spans major milestones, architecture decisions, environment execution, or repo structure changes.
+23. If the thread becomes long or context feels tight, notify the user before any recap or compaction and update `CODEX_HANDOFF.md` first. Do not pretend an exact context percentage is available; use a conservative heuristic.
+24. Report exactly what changed, what was inferred from the repo or discovery script, what was executed automatically, what was verified, what still requires environment access, and which publish, import, or registration steps were intentionally not performed.
 
 ## Default Operating Assumptions
 

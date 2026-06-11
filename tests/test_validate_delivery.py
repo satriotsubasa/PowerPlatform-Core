@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -102,6 +103,99 @@ class ValidateDeliveryTests(unittest.TestCase):
         self.assertTrue(metadata["explicitUserSelection"])
         self.assertEqual(metadata["staleRisk"], "allowed-explicit-selection")
 
+    def test_build_managed_promotion_audit_requires_three_layer_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            artifact = repo / "promotion" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"fresh package")
+
+            payload = validate_delivery.build_managed_promotion_audit(
+                repo=repo,
+                spec={
+                    "sourceEnvironmentUrl": "https://contoso-dev.crm.dynamics.com",
+                    "targetEnvironmentUrl": "https://contoso-test.crm.dynamics.com",
+                    "targetSolutionUniqueName": "ContosoCore_Patch_001",
+                    "packagePath": str(artifact),
+                    "generatedThisSession": True,
+                    "components": [
+                        {
+                            "type": "ribbon",
+                            "name": "account:RibbonDiffXml",
+                            "sourceEvidence": {"matches": True},
+                            "packageEvidence": {"matches": True},
+                            "targetReadbackEvidence": {"matches": True},
+                        }
+                    ],
+                },
+            )
+
+        self.assertTrue(payload["success"])
+        self.assertEqual(payload["mode"], "managed-promotion-audit")
+        self.assertEqual(payload["componentCount"], 1)
+        self.assertEqual(payload["auditRows"][0]["status"], "aligned")
+
+    def test_build_managed_promotion_audit_flags_stale_target_readback(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            artifact = repo / "promotion" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"fresh package")
+
+            payload = validate_delivery.build_managed_promotion_audit(
+                repo=repo,
+                spec={
+                    "sourceEnvironmentUrl": "https://contoso-dev.crm.dynamics.com",
+                    "targetEnvironmentUrl": "https://contoso-test.crm.dynamics.com",
+                    "targetSolutionUniqueName": "ContosoCore_Patch_001",
+                    "packagePath": str(artifact),
+                    "generatedThisSession": True,
+                    "components": [
+                        {
+                            "type": "table-label",
+                            "name": "account",
+                            "sourceEvidence": {"matches": True},
+                            "packageEvidence": {"matches": True},
+                            "targetReadbackEvidence": {"matches": False},
+                        }
+                    ],
+                },
+            )
+
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["auditRows"][0]["status"], "target-stale")
+        self.assertIn("target metadata", payload["auditRows"][0]["remediationRecommendation"])
+
+    def test_build_managed_promotion_audit_treats_explicit_stale_state_as_failed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            artifact = repo / "promotion" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"fresh package")
+
+            payload = validate_delivery.build_managed_promotion_audit(
+                repo=repo,
+                spec={
+                    "sourceEnvironmentUrl": "https://contoso-dev.crm.dynamics.com",
+                    "targetEnvironmentUrl": "https://contoso-test.crm.dynamics.com",
+                    "targetSolutionUniqueName": "ContosoCore_Patch_001",
+                    "packagePath": str(artifact),
+                    "generatedThisSession": True,
+                    "components": [
+                        {
+                            "type": "ribbon",
+                            "name": "account:RibbonDiffXml",
+                            "sourceEvidence": {"state": "aligned"},
+                            "packageEvidence": {"state": "aligned"},
+                            "targetReadbackEvidence": {"state": "stale"},
+                        }
+                    ],
+                },
+            )
+
+        self.assertFalse(payload["success"])
+        self.assertEqual(payload["auditRows"][0]["status"], "target-stale")
+
     def test_run_solution_pack_check_warns_when_only_supporting_solution_source_exists(self) -> None:
         result = validate_delivery.run_solution_pack_check(
             FIXTURES_ROOT / "supporting_solution_only_repo",
@@ -145,6 +239,61 @@ class ValidateDeliveryTests(unittest.TestCase):
         payload = write_json_output.call_args.args[0]
         self.assertEqual(payload["discovery"]["repoArchetype"], "solution-centric-dataverse")
         self.assertEqual(payload["discovery"]["solutionSourceModel"], "unpacked-solution-source")
+
+    def test_main_reports_managed_promotion_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = Path(temp_dir)
+            artifact = repo / "promotion" / "ContosoCore.zip"
+            artifact.parent.mkdir(parents=True)
+            artifact.write_bytes(b"fresh package")
+            audit_spec = {
+                "sourceEnvironmentUrl": "https://contoso-dev.crm.dynamics.com",
+                "targetEnvironmentUrl": "https://contoso-test.crm.dynamics.com",
+                "targetSolutionUniqueName": "ContosoCore_Patch_001",
+                "packagePath": str(artifact),
+                "generatedThisSession": True,
+                "components": [
+                    {
+                        "type": "ribbon",
+                        "name": "account:RibbonDiffXml",
+                        "sourceEvidence": {"matches": True},
+                        "packageEvidence": {"matches": True},
+                        "targetReadbackEvidence": {"matches": True},
+                    }
+                ],
+            }
+
+            discovery = {
+                "inferred": {
+                    "repo_archetype": "solution-centric-dataverse",
+                    "solution_source_model": "unpacked-solution-source",
+                }
+            }
+
+            with mock.patch.object(validate_delivery, "discover_repo_context", return_value=discovery), \
+                 mock.patch.object(validate_delivery, "repo_root", return_value=repo), \
+                 mock.patch.object(validate_delivery, "write_json_output") as write_json_output:
+                with mock.patch.object(
+                    sys,
+                    "argv",
+                    [
+                        "validate_delivery.py",
+                        "--repo-root",
+                        str(repo),
+                        "--skip-plugin-build",
+                        "--skip-pcf-build",
+                        "--skip-word-templates",
+                        "--skip-solution-pack",
+                        "--promotion-audit-spec",
+                        json.dumps(audit_spec),
+                    ],
+                ):
+                    exit_code = validate_delivery.main()
+
+        self.assertEqual(exit_code, 0)
+        payload = write_json_output.call_args.args[0]
+        self.assertIn("managedPromotionAudit", payload)
+        self.assertTrue(payload["managedPromotionAudit"]["success"])
 
 
 if __name__ == "__main__":

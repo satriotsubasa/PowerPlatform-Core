@@ -39,6 +39,12 @@ Do not import a package from `bin`, `Release`, `Downloads`, or old temp folders 
 
 If the primitive becomes solution import, stop before import and tell the user that this is no longer a fast targeted deploy. State the expected 10-30 minute duration window, including import, publish, cache refresh, and read-back verification, then ask for explicit approval when a narrower path is unavailable.
 
+## Managed Promotion Audit
+
+When promoting a managed package to another environment, use `scripts/validate_delivery.py --promotion-audit-spec ...` or produce the same table manually before closeout. The audit must compare expected source or DEV state, package contents, and target live read-back for each scoped component.
+
+Do not accept solution version alone as deployment proof for command bars, RibbonDiffXml, table labels, forms, views, flows, security roles, plug-in steps, or configuration rows. If the version updated but effective metadata did not, run targeted publish and read-back before any new import attempt; if it remains stale, inspect solution layers and ask before scoped remediation.
+
 ## What "Fully Execute" Means
 
 If the user asks for full execution, aim to:

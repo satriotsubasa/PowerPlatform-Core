@@ -19,7 +19,8 @@ Opinionated house conventions belong in overlay repos, not here.
 2. It selects the development surface: client script, plug-in, custom API, PCF, form metadata, RibbonDiffXml, flow, Dataverse schema, config data, or solution ALM.
 3. It favors source-controlled edits and deterministic helpers over maker-portal memory or browser automation.
 4. It runs a live mutation preflight that names the environment, PAC profile, target solution, exact components, delivery primitive, artifact source, blast radius, timeout, and rollback path.
-5. It validates and deploys through approved targeted paths first, such as web resource sync, plug-in push, form/ribbon patch helpers, PCF wrapper deployment, flow update helpers, or keyed data upsert.
+5. It audits managed promotion by comparing source or DEV expected state, fresh package contents, and target live read-back before treating an imported package as aligned.
+6. It validates and deploys through approved targeted paths first, such as web resource sync, plug-in push, form/ribbon patch helpers, PCF wrapper deployment, flow update helpers, or keyed data upsert.
 
 ## What Core Owns
 
@@ -55,7 +56,7 @@ Core currently supports:
 - PCF scaffolding, versioning, packaging, and deployment
 - solution-aware cloud flow inspect, lint, create, update, signed HTTP trigger URL retrieval, and hardening review
 - document-generation inspection and planning
-- solution deployment and delivery validation
+- solution deployment, delivery validation, and managed promotion audit gates
 - coordinated multi-step execution through `scripts/apply_requirement_spec.py`
 - Power Apps Code App build and push via `scripts/push_code_app.py`, with automatic `power.config.json` detection in `scripts/discover_context.py`
 
@@ -65,6 +66,7 @@ Core guidance now also explicitly covers:
 
 - choosing the right implementation surface through [references/execution-surface-guide.md](references/execution-surface-guide.md)
 - command-bar and RibbonDiffXml safety: use web-resource-only deploys for existing command logic, reserve `patch_form_ribbon.py` for form-level metadata, and route new entity commands/buttons/rules through fresh package recovery with version bump and read-back verification
+- managed package promotion safety: import success and solution version are not completion proof; high-risk metadata needs package evidence plus target live read-back
 - completion evidence and partial-failure recovery through [references/verification-and-recovery.md](references/verification-and-recovery.md)
 - immutable stable keys, source-system-qualified provenance, and honest dry-run boundaries in data operations
 - explicit deployment closeout that distinguishes repo-ready from environment-updated state

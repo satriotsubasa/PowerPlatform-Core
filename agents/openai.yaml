@@ -4,4 +4,4 @@ interface:
   icon_small: "./assets/power-platform-uploaded-exact.png"
   icon_large: "./assets/power-platform-uploaded-exact.png"
   brand_color: "#149CA1"
-  default_prompt: "Use $powerplatform-core to read this repo, understand the Microsoft Power Platform and Dataverse solution structure, choose the right development surface, and safely build, validate, and deliver the requested source-controlled change with the required live mutation preflight."
+  default_prompt: "Use $powerplatform-core to read this repo, understand the Microsoft Power Platform and Dataverse solution structure, choose the right development surface, and safely build, validate, and deliver the requested source-controlled change with live mutation preflight and managed promotion audit gates."
