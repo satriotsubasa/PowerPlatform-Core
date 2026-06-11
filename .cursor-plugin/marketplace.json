@@ -3,9 +3,7 @@
   "owner": {
     "name": "Satrio Tsubasa"
   },
-  "metadata": {
-    "description": "Power Platform / Dataverse coding-agent skills."
-  },
+  "description": "Power Platform / Dataverse coding-agent skills.",
   "plugins": [
     {
       "name": "powerplatform-core",

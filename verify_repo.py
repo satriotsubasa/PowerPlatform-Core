@@ -119,7 +119,6 @@ def verify_skill_structure() -> None:
         ROOT / ".agents" / "plugins" / "marketplace.json",
         ROOT / ".cursor-plugin" / "marketplace.json",
         ROOT / "gemini-extension.json",
-        ROOT / "package.json",
     ):
         if manifest.exists():
             try:

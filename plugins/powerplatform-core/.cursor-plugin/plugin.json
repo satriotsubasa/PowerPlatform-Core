@@ -20,5 +20,5 @@
     "dynamics-365",
     "alm"
   ],
-  "skills": "./skills/"
+  "skills": "./skills/*/SKILL.md"
 }
