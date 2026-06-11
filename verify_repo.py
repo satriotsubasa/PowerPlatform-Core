@@ -11,11 +11,17 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-DOTNET_PROJECTS = (
+IS_WINDOWS = os.name == "nt"
+# DataverseOps multi-targets net8.0 (+ net8.0-windows on Windows) and builds everywhere.
+CROSS_PLATFORM_DOTNET_PROJECTS = (
     ROOT / "tools" / "CodexPowerPlatform.DataverseOps" / "CodexPowerPlatform.DataverseOps.csproj",
+)
+# AuthDialog is a WPF (net8.0-windows) app; it only builds on Windows.
+WINDOWS_ONLY_DOTNET_PROJECTS = (
     ROOT / "tools" / "CodexPowerPlatform.AuthDialog" / "CodexPowerPlatform.AuthDialog.csproj",
 )
-DOTNET_TEST_PROJECTS = (
+# The .NET test project targets net8.0-windows.
+WINDOWS_ONLY_DOTNET_TEST_PROJECTS = (
     ROOT / "tools" / "CodexPowerPlatform.DataverseOps.Tests" / "CodexPowerPlatform.DataverseOps.Tests.csproj",
 )
 
@@ -90,7 +96,13 @@ def verify_dotnet_projects() -> None:
     dotnet = shutil.which("dotnet")
     if not dotnet:
         raise RuntimeError("dotnet was not found on PATH. Install the .NET SDK or rerun with --skip-dotnet.")
-    for project in DOTNET_PROJECTS:
+    projects = list(CROSS_PLATFORM_DOTNET_PROJECTS)
+    if IS_WINDOWS:
+        projects.extend(WINDOWS_ONLY_DOTNET_PROJECTS)
+    else:
+        for project in WINDOWS_ONLY_DOTNET_PROJECTS:
+            print(f"Skipping {project.name} (Windows-only WPF project) on this non-Windows host.")
+    for project in projects:
         run_command([dotnet, "build", str(project), "--nologo"])
 
 
@@ -98,22 +110,38 @@ def verify_dotnet_test_projects() -> None:
     dotnet = shutil.which("dotnet")
     if not dotnet:
         raise RuntimeError("dotnet was not found on PATH. Install the .NET SDK or rerun with --skip-dotnet.")
-    for project in DOTNET_TEST_PROJECTS:
+    if not IS_WINDOWS:
+        for project in WINDOWS_ONLY_DOTNET_TEST_PROJECTS:
+            print(f"Skipping {project.name} (net8.0-windows test project) on this non-Windows host.")
+        return
+    for project in WINDOWS_ONLY_DOTNET_TEST_PROJECTS:
         run_command([dotnet, "test", str(project), "--nologo"])
 
 
 def verify_skill_contract() -> None:
     quick_validate = locate_quick_validate()
     if not quick_validate:
-        print("Skipping quick_validate.py because the skill-creator validator was not found in this Codex install.")
+        print(
+            "Skipping quick_validate.py because the skill-creator validator was not found "
+            "(looked under the Codex and Claude skill homes)."
+        )
         return
     run_command([sys.executable, str(quick_validate), str(ROOT)])
 
 
 def locate_quick_validate() -> Path | None:
-    codex_home = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
-    candidate = codex_home / "skills" / ".system" / "skill-creator" / "scripts" / "quick_validate.py"
-    return candidate if candidate.exists() else None
+    candidate_roots: list[Path] = []
+    for env_var in ("CODEX_HOME", "CLAUDE_CONFIG_DIR"):
+        value = os.environ.get(env_var)
+        if value:
+            candidate_roots.append(Path(value))
+    candidate_roots.append(Path.home() / ".codex")
+    candidate_roots.append(Path.home() / ".claude")
+    for root in candidate_roots:
+        candidate = root / "skills" / ".system" / "skill-creator" / "scripts" / "quick_validate.py"
+        if candidate.exists():
+            return candidate
+    return None
 
 
 if __name__ == "__main__":

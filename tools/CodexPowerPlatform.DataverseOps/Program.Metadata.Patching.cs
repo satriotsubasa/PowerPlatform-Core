@@ -30,7 +30,6 @@ internal static partial class Program
                 entityLogicalName = spec.EntityLogicalName,
                 formName = spec.FormName,
                 appliedOperations = updated.AppliedOperations,
-                createdNodes = updated.CreatedNodes,
                 message = "No form XML changes were needed.",
             };
         }
@@ -49,7 +48,6 @@ internal static partial class Program
             entityLogicalName = spec.EntityLogicalName,
             formName = spec.FormName,
             appliedOperations = updated.AppliedOperations,
-            createdNodes = updated.CreatedNodes,
         };
     }
 

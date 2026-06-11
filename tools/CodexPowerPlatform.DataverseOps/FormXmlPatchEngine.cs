@@ -1,3 +1,4 @@
+using System.Xml;
 using System.Xml.Linq;
 using System.Xml.XPath;
 
@@ -22,17 +23,16 @@ internal static class FormXmlPatchEngine
 {
     internal static XmlPatchApplicationResult ApplyFormXmlPatch(string formXml, IReadOnlyList<XmlPatchOperationSpec> operations)
     {
-        var document = XDocument.Parse(formXml, LoadOptions.PreserveWhitespace);
+        var document = LoadXmlDocument(formXml);
         var root = document.Root ?? throw new InvalidOperationException("Form XML does not contain a root form node.");
         var appliedOperations = new List<string>();
-        var createdNodes = new List<string>();
         var changed = ApplyOperations(root, operations, appliedOperations);
 
         return new XmlPatchApplicationResult(
             changed,
             document.ToString(SaveOptions.DisableFormatting),
             appliedOperations,
-            createdNodes);
+            new List<string>());
     }
 
     internal static XmlPatchApplicationResult ApplyFormRibbonPatch(
@@ -40,7 +40,7 @@ internal static class FormXmlPatchEngine
         IReadOnlyList<XmlPatchOperationSpec> operations,
         bool createRibbonDiffXmlIfMissing)
     {
-        var document = XDocument.Parse(formXml, LoadOptions.PreserveWhitespace);
+        var document = LoadXmlDocument(formXml);
         var root = document.Root ?? throw new InvalidOperationException("Form XML does not contain a root form node.");
         var appliedOperations = new List<string>();
         var createdNodes = new List<string>();
@@ -252,7 +252,7 @@ internal static class FormXmlPatchEngine
             throw new InvalidOperationException($"{operationType} requires a non-empty xml fragment.");
         }
 
-        var wrapper = XElement.Parse($"<root>{xml}</root>", LoadOptions.PreserveWhitespace);
+        var wrapper = LoadXmlDocument($"<root>{xml}</root>").Root!;
         if (!wrapper.Nodes().Any())
         {
             throw new InvalidOperationException($"{operationType} requires at least one XML element fragment.");
@@ -264,6 +264,20 @@ internal static class FormXmlPatchEngine
         }
 
         return wrapper.Elements().Select(element => new XElement(element)).ToList();
+    }
+
+    private static XDocument LoadXmlDocument(string xml)
+    {
+        var settings = new XmlReaderSettings
+        {
+            DtdProcessing = DtdProcessing.Prohibit,
+            MaxCharactersFromEntities = 0,
+            XmlResolver = null,
+        };
+
+        using var stringReader = new StringReader(xml);
+        using var xmlReader = XmlReader.Create(stringReader, settings);
+        return XDocument.Load(xmlReader, LoadOptions.PreserveWhitespace);
     }
 
     private static List<XElement> CloneElements(List<XElement> elements)

@@ -90,7 +90,17 @@ internal static class TargetInputResolver
         process.Start();
         var stdoutTask = process.StandardOutput.ReadToEndAsync();
         var stderrTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync().ConfigureAwait(true);
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            TryKillProcess(process);
+            throw new InvalidOperationException(
+                "PAC CLI 'env list' timed out after 120s while resolving the environment URL.");
+        }
 
         var stdout = await stdoutTask.ConfigureAwait(true);
         var stderr = await stderrTask.ConfigureAwait(true);
@@ -116,5 +126,20 @@ internal static class TargetInputResolver
 
         throw new InvalidOperationException(
             $"PAC CLI did not return an environment URL for environment ID '{environmentId}'.");
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup; the timeout error is the meaningful signal.
+        }
     }
 }

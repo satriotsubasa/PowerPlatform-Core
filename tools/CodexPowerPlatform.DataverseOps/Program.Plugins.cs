@@ -94,7 +94,7 @@ internal static partial class Program
         var requiredTypeNames = GetRequiredPluginTypeNames(spec.Steps);
         var pluginTypes = requiredTypeNames.Length == 0
             ? new Dictionary<string, Entity>(StringComparer.Ordinal)
-            : WaitForAssemblyPluginTypes(client, assemblyId, requiredTypeNames);
+            : WaitForAssemblyPluginTypes(client, assemblyId, requiredTypeNames, ResolvePluginTypeWaitSeconds(spec.PluginTypeWaitSeconds));
         var createdSteps = CreatePluginSteps(client, spec.SolutionUniqueName, pluginTypes, spec.Steps);
 
         var payload = new
@@ -164,7 +164,7 @@ internal static partial class Program
         var requiredTypeNames = GetRequiredPluginTypeNames(spec.Steps);
         var pluginTypes = requiredTypeNames.Length == 0
             ? new Dictionary<string, Entity>(StringComparer.Ordinal)
-            : WaitForPackagePluginTypes(client, packageId, requiredTypeNames);
+            : WaitForPackagePluginTypes(client, packageId, requiredTypeNames, ResolvePluginTypeWaitSeconds(spec.PluginTypeWaitSeconds));
         var createdSteps = CreatePluginSteps(client, spec.SolutionUniqueName, pluginTypes, spec.Steps);
 
         var payload = new
@@ -358,10 +358,16 @@ internal static partial class Program
         return createdSteps;
     }
 
+    private static int ResolvePluginTypeWaitSeconds(int? requestedWaitSeconds)
+    {
+        return requestedWaitSeconds is > 0 ? requestedWaitSeconds.Value : 60;
+    }
+
     private static Dictionary<string, Entity> WaitForAssemblyPluginTypes(
         ServiceClient client,
         Guid assemblyId,
-        IReadOnlyCollection<string> typeNames)
+        IReadOnlyCollection<string> typeNames,
+        int waitSeconds)
     {
         return WaitForPluginTypes(
             client,
@@ -370,13 +376,15 @@ internal static partial class Program
             {
                 query.Criteria.AddCondition("pluginassemblyid", ConditionOperator.Equal, assemblyId);
             },
-            "plug-in assembly");
+            "plug-in assembly",
+            waitSeconds);
     }
 
     private static Dictionary<string, Entity> WaitForPackagePluginTypes(
         ServiceClient client,
         Guid packageId,
-        IReadOnlyCollection<string> typeNames)
+        IReadOnlyCollection<string> typeNames,
+        int waitSeconds)
     {
         return WaitForPluginTypes(
             client,
@@ -386,16 +394,18 @@ internal static partial class Program
                 var assemblyLink = query.AddLink("pluginassembly", "pluginassemblyid", "pluginassemblyid", JoinOperator.Inner);
                 assemblyLink.LinkCriteria.AddCondition("packageid", ConditionOperator.Equal, packageId);
             },
-            "plug-in package");
+            "plug-in package",
+            waitSeconds);
     }
 
     private static Dictionary<string, Entity> WaitForPluginTypes(
         ServiceClient client,
         IReadOnlyCollection<string> typeNames,
         Action<QueryExpression> applyScope,
-        string registrationKind)
+        string registrationKind,
+        int waitSeconds)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(30);
+        var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
         while (DateTime.UtcNow <= deadline)
         {
             var query = new QueryExpression("plugintype")
@@ -619,6 +629,8 @@ internal static partial class Program
 
         public string? SolutionUniqueName { get; init; }
 
+        public int? PluginTypeWaitSeconds { get; init; }
+
         public List<PluginStepRegistrationSpec> Steps { get; init; } = new();
     }
 
@@ -633,6 +645,8 @@ internal static partial class Program
         public string Version { get; init; } = string.Empty;
 
         public string? SolutionUniqueName { get; init; }
+
+        public int? PluginTypeWaitSeconds { get; init; }
 
         public List<PluginStepRegistrationSpec> Steps { get; init; } = new();
     }

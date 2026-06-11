@@ -266,9 +266,9 @@ def resolve_authoritative_unpacked_solution(
 
 def active_pac_profile() -> dict[str, str | None]:
     try:
-        auth_who = run_command(["pac", "auth", "who"], check=False)
-        auth_list = run_command(["pac", "auth", "list"], check=False)
-    except OSError:
+        auth_who = run_command(["pac", "auth", "who"], check=False, timeout_seconds=30)
+        auth_list = run_command(["pac", "auth", "list"], check=False, timeout_seconds=30)
+    except (OSError, RuntimeError):
         return {
             "user": None,
             "tenant_id": None,
@@ -873,6 +873,14 @@ def launch_auth_dialog(
     tenant_id: str | None = None,
     auto_validate: bool = False,
 ) -> dict[str, Any]:
+    if os.name != "nt":
+        raise RuntimeError(
+            "The interactive authentication dialog is Windows-only (it is a WPF app). "
+            "On macOS/Linux, use the headless path instead: pass --environment-url and "
+            "--solution-unique-name explicitly and let sign-in use the device-code flow "
+            "(the DataverseOps tool prints a device code to complete in a browser)."
+        )
+
     build_dotnet_project(dataverse_tool_project())
     build_dotnet_project(auth_dialog_project())
 
@@ -880,27 +888,26 @@ def launch_auth_dialog(
     temporary.close()
     output_path = Path(temporary.name)
 
-    args = [
-        str(auth_dialog_exe()),
-        "--output-path",
-        str(output_path),
-        "--tool-dll-path",
-        str(dataverse_tool_dll()),
-    ]
-    if target_url:
-        args.extend(["--initial-target-url", target_url])
-    if username:
-        args.extend(["--initial-username", username])
-    if tenant_id:
-        args.extend(["--initial-tenant-id", tenant_id])
-    if auto_validate:
-        args.append("--auto-validate")
-
-    completed = run_command(args, cwd=skill_root(), check=False)
-    if not output_path.exists():
-        raise RuntimeError("Authentication dialog did not produce an output payload.")
-
     try:
+        args = [
+            str(auth_dialog_exe()),
+            "--output-path",
+            str(output_path),
+            "--tool-dll-path",
+            str(dataverse_tool_dll()),
+        ]
+        if target_url:
+            args.extend(["--initial-target-url", target_url])
+        if username:
+            args.extend(["--initial-username", username])
+        if tenant_id:
+            args.extend(["--initial-tenant-id", tenant_id])
+        if auto_validate:
+            args.append("--auto-validate")
+
+        completed = run_command(args, cwd=skill_root(), check=False)
+        if not output_path.exists():
+            raise RuntimeError("Authentication dialog did not produce an output payload.")
         payload = json.loads(output_path.read_text(encoding="utf-8"))
     finally:
         output_path.unlink(missing_ok=True)
