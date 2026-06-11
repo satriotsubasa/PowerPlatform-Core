@@ -1,6 +1,6 @@
 {
   "name": "powerplatform-core",
   "description": "Coding-agent skill for Microsoft Power Platform and Dataverse development.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "contextFileName": "GEMINI.md"
 }
