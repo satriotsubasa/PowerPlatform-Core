@@ -1,0 +1,14 @@
+{
+  "name": "powerplatform-core",
+  "owner": {
+    "name": "Satrio Tsubasa"
+  },
+  "description": "Power Platform / Dataverse coding-agent skills.",
+  "plugins": [
+    {
+      "name": "powerplatform-core",
+      "source": "plugins/powerplatform-core",
+      "description": "Coding-agent skill for Microsoft Power Platform and Dataverse development."
+    }
+  ]
+}

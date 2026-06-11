@@ -1,16 +1,16 @@
 ---
 name: document-generation
 description: >
-  Use for ANY Dataverse document-generation task built on Word Templates — inventory the
-  content controls in a `.docx`/`.dotx` template, map placeholders to data, and plan a
-  template-aware change before editing the template blindly. Fires whenever the user mentions
-  a Word Template, document generation, content controls, placeholder or merge-field mapping,
-  document-definition records, "why is this field blank in the generated doc", "add a placeholder
-  to the template", "what tags does this template use", or a document-generation plug-in — even
-  if no helper is named. It treats `Word Templates/` as first-class source, surfaces duplicate
-  tags, missing required placeholders, and unused controls, and points at the `*.Business`,
-  `*.Plugins`, and `*.Data` touchpoints a placeholder change implies. Run the live-mutation
-  preflight from the `powerplatform-core` orchestrator before any live template or component write.
+  Use for Dataverse document generation built on Word Templates - inventory the content controls
+  in a `.docx`/`.dotx` template, map placeholders to data, and plan a template-aware change
+  before editing blindly. Fires whenever the user mentions a Word Template, document generation,
+  content controls, placeholder or merge-field mapping, document-definition records, "why is this
+  field blank in the generated doc", "add a placeholder to the template", "what tags does this
+  template use", or a document-generation plug-in, even if no helper is named. Treats `Word
+  Templates/` as first-class source, surfaces duplicate tags, missing required placeholders, and
+  unused controls, and points at the `*.Business`, `*.Plugins`, and `*.Data` touchpoints a
+  placeholder change implies. Run the live-mutation preflight from the `powerplatform-core`
+  orchestrator before any live template or component write.
 ---
 
 # Document Generation — Word Templates and Placeholder Mapping

@@ -1,16 +1,16 @@
 ---
 name: security-roles
 description: >
-  Use for ANY Dataverse security role task — list or inspect roles, create custom roles, and
-  update privilege sets or role metadata as code-first desired state. Fires whenever the user
-  says "create a security role", "give this role access", "update the privileges", "what can
-  this role do", "list the roles", "copy a role and adjust it", "set table permissions", or
-  asks about depth/scope (basic/local/deep/global), privilege names like `prvRead...`, or which
-  role a model-driven app needs — even if no helper is named. It is solution-aware and ALM-cautious:
-  it prefers custom roles over editing predefined or system-generated roles, copies a baseline
-  before adjusting, keeps role changes in the owning unmanaged solution, and warns about the
-  managed-import merge caveat where manually added privileges can be dropped. Run the live-mutation
-  preflight from the `powerplatform-core` orchestrator before any create or update.
+  Use for Dataverse security roles - list or inspect roles, create custom roles, and update
+  privilege sets or role metadata as code-first desired state. Fires on "create a security
+  role", "give this role access", "update the privileges", "what can this role do", "list the
+  roles", "copy a role and adjust it", "set table permissions", or questions about depth/scope
+  (basic/local/deep/global), privilege names like `prvRead...`, or which role a model-driven app
+  needs, even if no helper is named. Solution-aware and ALM-cautious: prefers custom roles over
+  editing predefined/system-generated roles, copies a baseline before adjusting, keeps changes
+  in the owning unmanaged solution, and warns about the managed-import merge caveat where
+  manually added privileges can be dropped. Run the live-mutation preflight from the
+  `powerplatform-core` orchestrator before any create or update.
 ---
 
 # Security Roles — Dataverse Roles and Privilege Sets

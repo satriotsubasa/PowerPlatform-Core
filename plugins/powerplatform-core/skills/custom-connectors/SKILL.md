@@ -1,15 +1,16 @@
 ---
 name: custom-connectors
 description: >
-  Use for designing Power Platform custom connectors and integration wrappers — reviewing an
-  OpenAPI/Swagger description, choosing the auth shape (API key, OAuth2, basic, none), taking an
-  operation inventory, and deciding whether to expose an API as a direct custom connector or
-  behind an Azure Function / API facade. Produces a connector name, auth approach, operation
-  summaries, a recommended pattern, suggested environment variables, and solution-aware
-  connection-reference guidance. Trigger this whenever the user mentions a custom connector,
-  OpenAPI/Swagger for Power Platform, connecting a flow or app to an external/REST API, an
-  integration wrapper or facade, or asks whether an Azure Function should sit in front of an
-  integration — even if no helper is named. This is design-first, not a connector publisher.
+  Use to DESIGN Power Platform custom connectors and integration wrappers - review an
+  OpenAPI/Swagger description, choose the auth shape (API key, OAuth2, basic, none), inventory
+  operations, and decide whether to expose an API as a direct custom connector or behind an Azure
+  Function / API facade. Produces a connector name, auth approach, operation summaries, a
+  recommended pattern, suggested environment variables, and solution-aware connection-reference
+  guidance. Trigger whenever the user mentions a custom connector, OpenAPI/Swagger for Power
+  Platform, connecting a flow or app to an external/REST API, an integration wrapper or facade,
+  or whether an Azure Function should front an integration, even if no helper is named.
+  Design-first - it does not publish the connector. Not for authoring the flow that calls it (use
+  power-automate-flows) or server-side Dataverse logic (use plugins-server-extensions).
 ---
 
 # Custom Connectors and Integration Wrappers

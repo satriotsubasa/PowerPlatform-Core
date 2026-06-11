@@ -55,6 +55,15 @@ Then **install from inside Codex** — there is no `codex plugin add` shell comm
 
 > `marketplace add` only *registers* the source; it never installs — installation happens in the `/plugins` browser. If the plugin doesn't appear there, run `codex plugin marketplace upgrade` and retry.
 
+### More agents (experimental)
+
+The same source also ships manifests for more agents. **Cursor** and **Copilot** are confirmed against each platform's published plugin schema; **Gemini** and **OpenCode** are partial because their skill discovery expects a repo-root layout that the Codex-required `plugins/` subfolder doesn't match. None are end-to-end tested here yet, so treat them as experimental and please report issues.
+
+- **Cursor** - add this repo as a plugin marketplace (Settings -> Plugins -> Team Marketplaces -> Import from Repo), then install `powerplatform-core`. (Cursor installs from its marketplace UI; there is no `owner/repo` shell command.)
+- **GitHub Copilot CLI** - `copilot plugin marketplace add satriotsubasa/PowerPlatform-Core` then `copilot plugin install powerplatform-core@powerplatform-core` (Copilot reuses the same `.claude-plugin/marketplace.json` catalog; verify the verb with `copilot plugin --help`).
+- **Gemini CLI** - `gemini extensions install https://github.com/satriotsubasa/PowerPlatform-Core`. Loads the **orchestrator** as always-on context, which then reads the domain skills as files on demand. (Gemini only auto-discovers a `skills/` folder at the repo root; our subfolder layout doesn't expose one, so the other ten skills aren't registered natively.)
+- **OpenCode** - not a one-line install yet. OpenCode discovers skills from a workspace-root dir (`.opencode/skills/`, `.claude/skills/`, or `.agents/skills/`); ours live in `plugins/powerplatform-core/skills/`, so copy or symlink that folder's contents into `.opencode/skills/` in your workspace. (OpenCode's `plugin` array installs npm packages only - no git URL - and has no documented hook to add skill paths.)
+
 ### Requirements
 
 The skills are code-first, so the live path needs a small local toolchain:

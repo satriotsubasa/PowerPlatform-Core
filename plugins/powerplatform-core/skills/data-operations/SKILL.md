@@ -1,13 +1,13 @@
 ---
 name: data-operations
 description: >
-  Use whenever the user wants to read or write Dataverse business or configuration data — create,
-  update, or upsert rows, seed or sync reference/config data, or design a query — rather than
-  change table metadata. Trigger on phrases like "create a record/row", "update this record",
-  "upsert by alternate key", "seed config data", "import/sync these rows", "set a field value on
-  a row", or "design an OData / FetchXML query" and "build the List rows filter for a flow", even
-  when the user never names a helper script. Prefer this skill for keyed create/update/upsert via
-  SDK or Web API and for query design across OData, FetchXML, and Power Automate "List rows".
+  Use for Dataverse row/record DATA and query design - create, update, or upsert rows, seed or
+  sync reference/config data, and design queries. Trigger on "create a record/row", "update this
+  record", "upsert by alternate key", "seed config data", "import/sync these rows", "set a field
+  value on a row", "design an OData / FetchXML query", or "build the List rows filter for a
+  flow", even when no helper is named. Covers keyed create/update/upsert via SDK or Web API and
+  query design across OData, FetchXML, and Power Automate "List rows". Not for table/column/form/
+  view/ribbon METADATA - use dataverse-schema.
 ---
 
 # Data Operations

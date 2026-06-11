@@ -1,16 +1,17 @@
 ---
 name: plugins-server-extensions
 description: >
-  Use for ANY Dataverse server-side extension task — C# plug-ins and custom APIs. Covers
-  headless first registration of a plug-in assembly or plug-in package, repeatable build-and-
-  push, SDK message-processing step and image inspection, reconciling step enable/disable
-  state to match source intent, and creating a custom API with its request parameters and
-  response properties. Fires whenever the user mentions a plug-in, plugin step, SDKMessage,
-  pre/post image, plug-in assembly or package, "register my plug-in", "push the plug-in",
-  "why is my step disabled", step-state drift, or a custom API / unbound action backed by a
-  plug-in — even if no helper is named. Treats step enablement as explicit deployment state
-  and registration as a separate approval gate. Run the live-mutation preflight from the
-  `powerplatform-core` orchestrator before any registration, push, or step-state write.
+  Use for Dataverse server-side logic in C# - plug-ins and custom APIs. Covers headless first
+  registration of a plug-in assembly or package, repeatable build-and-push, SDK
+  message-processing step and image inspection, reconciling step enable/disable state to source
+  intent, and creating a custom API with its request parameters and response properties. Fires
+  whenever the user mentions a plug-in, plugin step, SDKMessage, pre/post image, plug-in
+  assembly or package, "register my plug-in", "push the plug-in", "why is my step disabled",
+  step-state drift, or a custom API / unbound action backed by a plug-in, even if no helper is
+  named. Treats step enablement as explicit deployment state and registration as a separate
+  approval gate. Not for Power Automate cloud flows - use power-automate-flows. Run the
+  live-mutation preflight from the `powerplatform-core` orchestrator before any registration,
+  push, or step-state write.
 ---
 
 # Plug-Ins & Server Extensions

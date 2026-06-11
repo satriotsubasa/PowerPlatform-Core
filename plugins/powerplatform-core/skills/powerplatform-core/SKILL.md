@@ -1,15 +1,15 @@
 ---
 name: powerplatform-core
 description: >
-  Use for ANY Microsoft Power Platform or Dataverse development task — model-driven apps,
-  plug-ins, PCF controls, web resources, form and ribbon metadata, solution-aware Power
-  Automate flows, Dataverse tables/columns/relationships, configuration data, custom APIs,
-  security roles, document generation, or solution ALM. Start here to discover repo context,
-  choose the right development surface, and safely build, validate, and deliver
-  source-controlled changes behind a mandatory live-mutation preflight. Trigger this whenever
-  the user mentions Power Platform, Dataverse, Dynamics 365, Power Apps, Power Automate,
-  model-driven apps, solutions, plug-ins, PCF, web resources, or the pac CLI — even if they
-  do not name a specific helper or file.
+  Entry point and router for Microsoft Power Platform and Dataverse development. Use to
+  discover repo context, choose the right development surface, and run the mandatory
+  live-mutation preflight before any deploy/publish/import/registration/data-write. Start here
+  when the request spans multiple areas, is ambiguous, or the repo shape is unknown, then DEFER
+  to the matching domain skill for focused single-domain work (schema, data, flows, plug-ins,
+  PCF/web resources, code apps, solution ALM, security roles, document generation, custom
+  connectors). Trigger when the user mentions Power Platform, Dataverse, Dynamics 365, Power
+  Apps, Power Automate, model-driven apps, solutions, or the pac CLI without naming a specific
+  asset - but let the domain skills lead on their specifics.
 ---
 
 # Power Platform Core — Orchestrator

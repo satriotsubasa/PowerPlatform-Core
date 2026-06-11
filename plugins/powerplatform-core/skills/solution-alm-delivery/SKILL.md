@@ -1,18 +1,19 @@
 ---
 name: solution-alm-delivery
 description: >
-  Use for ANY Dataverse solution ALM and safe-delivery task — pack/import/deploy a solution,
-  add solution components, solution versioning, patch/merge/upgrade planning, repo standards
-  review, and the safe-delivery validation that runs the live-mutation preflight gate. Fires
-  whenever the user says "deploy the solution", "import the solution", "pack and import",
-  "bump the solution version", "create a patch", "merge the patch", "upgrade the solution",
-  "add this component to the solution", "validate my delivery", "is my repo following
-  standards", or asks for a managed/unmanaged solution package — even if no helper is named.
-  This is the most safety-critical skill: it blocks stale-artifact imports, refuses to silently
-  escalate a targeted change into a whole-solution import, classifies blast radius before any
-  mutation, and treats solution import as a slow 10-30 minute path that needs explicit approval.
-  Always run the live-mutation preflight from the `powerplatform-core` orchestrator before any
-  pack-to-import, publish, or component write.
+  Use for whole-solution Dataverse ALM and safe delivery - pack/import/deploy a solution, add
+  solution components, solution versioning, patch/merge/upgrade planning, repo standards review,
+  and safe-delivery validation behind the live-mutation preflight gate. Fires on "deploy the
+  solution", "import the solution", "pack and import", "bump the solution version", "create a
+  patch", "merge the patch", "upgrade the solution", "add this component to the solution",
+  "validate my delivery", "is my repo following standards", or a request for a managed/unmanaged
+  solution package, even if no helper is named. For a single asset (web resource, plug-in, PCF,
+  form/ribbon metadata, role, flow), prefer the targeted sibling skill; escalate to a solution
+  package ONLY when no targeted primitive fits and the user accepts the broader blast radius.
+  Blocks stale-artifact imports, refuses silent escalation, classifies blast radius, and treats
+  solution import as a slow 10-30 minute path needing explicit approval. Always run the
+  live-mutation preflight from the `powerplatform-core` orchestrator before any pack-to-import,
+  publish, or component write.
 ---
 
 # Solution ALM & Delivery — Pack, Import, Deploy, and Safe Promotion
