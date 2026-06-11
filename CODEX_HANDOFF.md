@@ -1,6 +1,6 @@
 # CODEX Handoff
 
-Last updated: 2026-06-11
+Last updated: 2026-06-12
 
 ## Purpose
 
@@ -42,16 +42,17 @@ Clean state after production-ready rename and scrub:
 - All company-specific references removed from test fixtures, templates, and documentation
 - Core overlay discovery supports any extension via `"extends": "powerplatform-core"` in overlay `skill-package.json`
 
-## Plugin & Multi-Agent Restructure (branch `feature/modular-plugin-multiagent`)
+## Plugin & Multi-Agent Restructure (merged to `main`)
 
-Active work converting the monolith into a multi-agent plugin. Not yet merged to `main`.
+Merged to `main` via PR #2 on 2026-06-12. The skill is now a multi-agent plugin.
 
 - Packaged as a plugin installable on both Claude Code (`.claude-plugin/`) and OpenAI Codex (`.codex-plugin/` + `.agents/plugins/marketplace.json`) from one shared source; both manifests point at `skills/`.
 - The monolithic guidance is decomposed into 11 modular skills under `skills/` (orchestrator `powerplatform-core` + 10 domain skills). The shared toolchain (`scripts/`, `tools/`, `references/`) stays at the plugin root, resolved via `$CLAUDE_PLUGIN_ROOT` / `$CODEX_PLUGIN_ROOT`. The root `SKILL.md` is now a thin plugin-aware pointer.
 - Cross-platform: `CodexPowerPlatform.DataverseOps` multi-targets `net8.0` + `net8.0-windows`; the WAM broker is Windows-only (runtime-guarded), macOS/Linux use device-code sign-in. The WPF `AuthDialog` stays Windows-only.
 - Phase 1 robustness pass landed: security-role paging fix, requirement-spec step-type fix, FetchXML escaping, Windows exec resolution in `push_code_app`, timeouts/leak-safety, FormXml DTD hardening, plus regression tests. `verify_repo.py` now also validates skill structure and skips Windows-only .NET builds off-Windows.
 - Note: the role `issytemgenerated` filter is the real (misspelled) Dataverse logical name — verified against MS docs; do not "fix" it.
-- Remaining: finalize install/migration docs; merge to `main`.
+- Done: merged to `main` (PR #2, merge commit `8d797f5`). The managed promotion audit gate (`validate_delivery.py --promotion-audit-spec`), which landed on `main` in parallel, is integrated into the `solution-alm-delivery` skill.
+- Optional next: add per-platform manifests for Cursor / Gemini / OpenCode reusing the same shared `skills/`, and run the skill-creator description-optimizer to tune skill triggering.
 
 ## Architecture State
 
