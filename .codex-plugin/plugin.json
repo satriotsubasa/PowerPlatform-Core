@@ -1,0 +1,36 @@
+{
+  "name": "powerplatform-core",
+  "version": "1.0.0",
+  "description": "Coding-agent skill for Microsoft Power Platform and Dataverse development. Read a repo, understand model-driven app and solution structure, choose the right development surface, and safely build, validate, and deliver source-controlled changes (plug-ins, PCF controls, web resources, form and ribbon metadata, solution-aware flows, Dataverse schema, configuration data, custom APIs, solution ALM) with a required live-mutation preflight.",
+  "author": {
+    "name": "Satrio Tsubasa",
+    "url": "https://github.com/satriotsubasa/PowerPlatform-Core"
+  },
+  "homepage": "https://github.com/satriotsubasa/PowerPlatform-Core",
+  "repository": "https://github.com/satriotsubasa/PowerPlatform-Core",
+  "license": "Apache-2.0",
+  "keywords": [
+    "power-platform",
+    "dataverse",
+    "power-apps",
+    "power-automate",
+    "pcf",
+    "plugins",
+    "dynamics-365",
+    "alm"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Power Platform Core",
+    "shortDescription": "Coding-agent skill for Microsoft Power Platform and Dataverse development",
+    "longDescription": "Generic, code-first skill for Microsoft Power Platform and Dataverse. Discovers repo context, picks the right development surface (metadata, client script, plug-in, custom API, flow, PCF, or solution ALM), applies repo-backed changes, and delivers them through safe, targeted paths behind a mandatory live-mutation preflight. Works without assuming any one house repo convention.",
+    "category": "Coding",
+    "brandColor": "#149CA1",
+    "composerIcon": "./assets/power-platform-uploaded-exact.png",
+    "logo": "./assets/power-platform-uploaded-exact.png",
+    "defaultPrompt": [
+      "Read this repo, understand the Power Platform and Dataverse solution structure, and tell me the safest way to deliver my change.",
+      "Build and deploy this plug-in / PCF / flow change with the required live-mutation preflight."
+    ]
+  }
+}
