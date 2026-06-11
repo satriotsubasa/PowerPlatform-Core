@@ -17,6 +17,5 @@
     "plugins",
     "dynamics-365",
     "alm"
-  ],
-  "skills": "./skills/"
+  ]
 }

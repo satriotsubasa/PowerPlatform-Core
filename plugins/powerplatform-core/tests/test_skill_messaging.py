@@ -24,23 +24,15 @@ def frontmatter(path: Path) -> str:
 
 class SkillMessagingTests(unittest.TestCase):
     def test_core_skill_description_markets_power_platform_development(self) -> None:
-        # The plugin's top-level SKILL.md pointer and the orchestrator skill both carry the
-        # marketing description as a folded YAML scalar, so assert against the whole
-        # frontmatter block rather than a single line.
-        for skill_path in (
-            PLUGIN_ROOT / "SKILL.md",
-            PLUGIN_ROOT / "skills" / "powerplatform-core" / "SKILL.md",
-        ):
-            fm = frontmatter(skill_path)
-            self.assertIn("Microsoft Power Platform", fm, msg=str(skill_path))
-            self.assertIn("Dataverse", fm, msg=str(skill_path))
-        # The top-level pointer is the marketing entry: it names the concrete surfaces and
-        # positions Core as a coding-agent skill. The orchestrator deliberately defers those
-        # specifics to the domain skills, so they are asserted only on the pointer.
-        pointer = frontmatter(PLUGIN_ROOT / "SKILL.md")
-        self.assertIn("plug-ins", pointer)
-        self.assertIn("PCF controls", pointer)
-        self.assertIn("coding-agent skill", pointer)
+        # The legacy root SKILL.md pointer was removed so Claude Code enumerates the
+        # skills/<name> entries cleanly (a root SKILL.md named like the orchestrator collides
+        # with it). The orchestrator skill now carries the plugin's positioning and the
+        # concrete surfaces it routes to; assert against its folded YAML frontmatter block.
+        orchestrator = frontmatter(PLUGIN_ROOT / "skills" / "powerplatform-core" / "SKILL.md")
+        self.assertIn("Microsoft Power Platform", orchestrator)
+        self.assertIn("Dataverse", orchestrator)
+        self.assertIn("plug-ins", orchestrator)
+        self.assertIn("PCF", orchestrator)
 
     def test_core_readme_markets_the_plugin(self) -> None:
         readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
