@@ -1,6 +1,6 @@
 {
   "name": "powerplatform-core",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Coding-agent skill for Microsoft Power Platform and Dataverse development. Read a repo, understand model-driven app and solution structure, choose the right development surface, and safely build, validate, and deliver source-controlled changes (plug-ins, PCF controls, web resources, form and ribbon metadata, solution-aware flows, Dataverse schema, configuration data, custom APIs, solution ALM) with a required live-mutation preflight.",
   "author": {
     "name": "Satrio Tsubasa",
