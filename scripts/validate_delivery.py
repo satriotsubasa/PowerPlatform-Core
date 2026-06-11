@@ -37,6 +37,7 @@ def main() -> int:
     parser.add_argument("--checker-output", help="Optional output directory for solution checker results.")
     parser.add_argument("--solution-name", help="Optional solution unique name to report alongside live preflight results.")
     parser.add_argument("--preflight-spec", help="Optional JSON object or path for the live mutation preflight gate.")
+    parser.add_argument("--promotion-audit-spec", help="Optional JSON object or path for a managed promotion audit gate.")
     parser.add_argument("--pcf-solution-configuration", choices=["Debug", "Release"], default="Release", help="Wrapper solution build configuration used for PCF package validation.")
     parser.add_argument("--live-preflight", action="store_true", help="Run a read-only Dataverse WhoAmI validation.")
     parser.add_argument("--run-solution-check", action="store_true", help="Run Power Apps Checker after packing the solution.")
@@ -138,6 +139,17 @@ def main() -> int:
     }
     if preflight is not None:
         payload["liveMutationPreflight"] = preflight
+
+    promotion_audit = None
+    if args.promotion_audit_spec:
+        promotion_audit_spec = read_json_object_argument(args.promotion_audit_spec, "--promotion-audit-spec")
+        promotion_audit = build_managed_promotion_audit(repo=repo, spec=promotion_audit_spec)
+        success &= bool(promotion_audit["success"])
+        warnings.extend(promotion_audit.get("warnings", []))
+        payload["managedPromotionAudit"] = promotion_audit
+
+    payload["success"] = success
+    payload["warnings"] = warnings
     write_json_output(payload, args.output)
     return 0 if success else 1
 
@@ -152,13 +164,17 @@ def build_discovery_summary(discovery: dict[str, Any]) -> dict[str, Any]:
 
 
 def read_preflight_json_argument(value: str) -> dict[str, Any]:
+    return read_json_object_argument(value, "--preflight-spec")
+
+
+def read_json_object_argument(value: str, option_name: str) -> dict[str, Any]:
     path = Path(value)
     if path.exists():
         loaded = json.loads(path.read_text(encoding="utf-8"))
     else:
         loaded = json.loads(value)
     if not isinstance(loaded, dict):
-        raise RuntimeError("--preflight-spec must resolve to a JSON object.")
+        raise RuntimeError(f"{option_name} must resolve to a JSON object.")
     return loaded
 
 
@@ -228,6 +244,152 @@ def build_live_mutation_preflight(*, repo: Path, spec: dict[str, Any]) -> dict[s
         "missingFields": missing_fields,
         "warnings": warnings,
     }
+
+
+def build_managed_promotion_audit(*, repo: Path, spec: dict[str, Any]) -> dict[str, Any]:
+    required_fields = [
+        "sourceEnvironmentUrl",
+        "targetEnvironmentUrl",
+        "targetSolutionUniqueName",
+        "components",
+    ]
+    artifact_path = first_text_value(spec, "artifactPath", "packagePath", "zipfile")
+    components = normalize_components(spec.get("components"))
+    missing_fields = [field for field in required_fields if field != "components" and is_missing(spec.get(field))]
+    if not components:
+        missing_fields.append("components")
+    if not artifact_path:
+        missing_fields.append("packagePath")
+
+    artifact = None
+    if artifact_path:
+        artifact = build_artifact_metadata(
+            repo=repo,
+            artifact_path=resolve_optional_repo_path(repo, artifact_path),
+            generated_this_session=bool(spec.get("generatedThisSession")),
+            explicit_user_selection=bool(spec.get("explicitUserSelection")),
+            solution_unique_name=first_text_value(spec, "artifactSolutionUniqueName", "packageSolutionUniqueName"),
+            solution_version=first_text_value(spec, "artifactSolutionVersion", "packageSolutionVersion"),
+            managed=spec.get("artifactManaged", spec.get("packageManaged")),
+            component_diff=spec.get("componentDiff"),
+        )
+
+    audit_rows = [build_promotion_audit_row(component) for component in components]
+    failed_rows = [row for row in audit_rows if row["status"] != "aligned"]
+    warnings: list[str] = []
+    if artifact and artifact.get("staleRisk") not in {"generated-this-session", "allowed-explicit-selection", "low"}:
+        warnings.append("Package artifact requires explicit freshness review before promotion audit.")
+    for row in failed_rows:
+        warnings.append(f"{row['type'] or 'component'}:{row['name'] or 'unnamed'} audit status is {row['status']}.")
+
+    return {
+        "success": not missing_fields and not failed_rows,
+        "mode": "managed-promotion-audit",
+        "repoRoot": str(repo),
+        "sourceEnvironmentUrl": text_or_none(spec.get("sourceEnvironmentUrl")),
+        "targetEnvironmentUrl": text_or_none(spec.get("targetEnvironmentUrl")),
+        "targetSolutionUniqueName": text_or_none(spec.get("targetSolutionUniqueName")),
+        "targetSolutionVersion": text_or_none(spec.get("targetSolutionVersion")),
+        "artifact": artifact,
+        "componentCount": len(audit_rows),
+        "auditRows": audit_rows,
+        "missingFields": missing_fields,
+        "warnings": warnings,
+    }
+
+
+def build_promotion_audit_row(component: dict[str, Any]) -> dict[str, Any]:
+    source_evidence = normalize_evidence(first_existing_value(component, "sourceEvidence", "devEvidence"))
+    package_evidence = normalize_evidence(component.get("packageEvidence"))
+    target_evidence = normalize_evidence(first_existing_value(component, "targetReadbackEvidence", "targetEvidence"))
+    status = infer_promotion_audit_status(source_evidence, package_evidence, target_evidence)
+    return {
+        "type": text_or_none(component.get("type")),
+        "name": text_or_none(component.get("name")),
+        "expected": component.get("expected"),
+        "sourceEvidence": source_evidence,
+        "packageEvidence": package_evidence,
+        "targetReadbackEvidence": target_evidence,
+        "status": status,
+        "remediationRecommendation": text_or_none(component.get("remediationRecommendation"))
+        or default_promotion_remediation(status),
+    }
+
+
+def normalize_evidence(value: Any) -> dict[str, Any]:
+    if value is None:
+        return {"state": "missing"}
+    if isinstance(value, bool):
+        return {"state": "passed" if value else "failed", "matches": value}
+    if isinstance(value, str):
+        return {"state": "provided", "summary": value.strip()} if value.strip() else {"state": "missing"}
+    if isinstance(value, dict):
+        evidence = dict(value)
+        explicit_state = text_or_none(evidence.get("state"))
+        if explicit_state:
+            evidence["state"] = explicit_state.lower()
+            return evidence
+        matches = evidence.get("matches")
+        present = evidence.get("present")
+        if matches is False or present is False:
+            evidence["state"] = "failed"
+        elif matches is True or present is True:
+            evidence["state"] = "passed"
+        elif any(not is_missing(v) for v in evidence.values()):
+            evidence["state"] = "provided"
+        else:
+            evidence["state"] = "missing"
+        return evidence
+    return {"state": "provided", "value": value}
+
+
+def infer_promotion_audit_status(
+    source_evidence: dict[str, Any],
+    package_evidence: dict[str, Any],
+    target_evidence: dict[str, Any],
+) -> str:
+    source_state = evidence_state(source_evidence)
+    package_state = evidence_state(package_evidence)
+    target_state = evidence_state(target_evidence)
+    if source_state == "failed":
+        return "source-mismatch"
+    if package_state == "failed":
+        return "package-mismatch"
+    if target_state == "failed":
+        return "target-stale"
+    if target_state == "missing":
+        return "missing-target-readback"
+    if source_state == "missing" or package_state == "missing":
+        return "incomplete-evidence"
+    if source_state == "provided" or package_state == "provided" or target_state == "provided":
+        return "needs-review"
+    return "aligned"
+
+
+def evidence_state(evidence: dict[str, Any]) -> str:
+    state = text_or_none(evidence.get("state")) or "missing"
+    normalized = state.lower()
+    if normalized in {"passed", "pass", "aligned", "matched", "match", "present"}:
+        return "passed"
+    if normalized in {"failed", "fail", "mismatch", "stale", "not-aligned", "not-present"}:
+        return "failed"
+    if normalized in {"missing", "unknown", "not-provided"}:
+        return "missing"
+    if normalized in {"provided", "review"}:
+        return "provided"
+    return "provided"
+
+
+def default_promotion_remediation(status: str) -> str:
+    if status == "aligned":
+        return "No remediation required."
+    if status == "source-mismatch":
+        return "Fix the source or DEV state before exporting another managed package."
+    if status == "package-mismatch":
+        return "Regenerate the managed package from verified source and inspect the package contents again."
+    if status in {"target-stale", "missing-target-readback"}:
+        return "Run targeted publish and read back the effective target metadata; inspect solution layers if it remains stale."
+    return "Collect the missing source, package, and target evidence before closing promotion."
 
 
 def normalize_components(value: Any) -> list[dict[str, Any]]:
@@ -304,6 +466,13 @@ def first_text_value(source: dict[str, Any], *keys: str) -> str | None:
         value = text_or_none(source.get(key))
         if value:
             return value
+    return None
+
+
+def first_existing_value(source: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if key in source:
+            return source[key]
     return None
 
 

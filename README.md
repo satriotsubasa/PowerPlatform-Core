@@ -103,6 +103,7 @@ The thing that makes this plugin different from "an agent with `pac` access" is 
 - **Mandatory live-mutation preflight.** Before *any* deploy, publish, import, registration, push, or data write, the agent prints a gate naming the target environment, PAC profile (and any mismatch), target solution, exact components, delivery primitive, artifact provenance, blast radius, rollback plan, and timeout. If a required field is missing, it stops.
 - **Stale-artifact blocking.** It will not import a ZIP from `bin`, `Release`, `Downloads`, or a temp folder unless that package was generated in-session or you explicitly selected it. Multiple candidate packages → it stops and asks.
 - **Targeted delivery first.** It prefers the narrowest primitive — web-resource sync, plug-in push, form/ribbon patch, PCF wrapper deploy, keyed upsert — and **never silently escalates** a targeted change into a whole-solution import (a slow, high-blast-radius path that needs explicit approval).
+- **Managed-promotion audit.** A successful import and a bumped solution version are **not completion proof** for high-risk metadata (command bars, forms, views, flows, roles, plug-in steps) — the agent confirms alignment from source/package evidence plus a **target live read-back** before calling a managed promotion done.
 
 ## How it's built
 

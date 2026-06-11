@@ -14,6 +14,7 @@ Use this reference when the task is about continuing a patch, planning a new pat
 - If importing the same patch version fails, do not retry stale packages. Bump the patch version or switch to a supported targeted component update path.
 - If the parent solution has active patches, do not attempt parent export/import as a workaround. Work in the selected patch or stop for explicit lifecycle direction.
 - Export a managed TST package only from a freshly verified DEV state or from a package generated in the current session after component membership is audited.
+- Before declaring a managed patch promotion complete, audit source or DEV state, managed package contents, and target live read-back for every expected component.
 - Never merge, delete, clone, or retire patches unless the user explicitly requests that lifecycle operation.
 - Prefer explicit patch planning before environment changes when the user is deciding between:
   - continue current patch
@@ -63,6 +64,12 @@ Required audit output:
 - components excluded because they are managed separately, such as a PCF package solution
 
 Use `scripts/add_solution_components.py` to place missing scoped components when the component can be resolved safely. Do not add broad required components or subcomponents unless the user accepts the expanded blast radius.
+
+## Post-Import Read-Back
+
+After importing a managed patch, read back high-risk effective metadata from the target instead of relying on installed version alone. This is required for command bars, RibbonDiffXml, table labels, forms, views, flows, security roles, plug-in steps, and configuration rows when they are part of the release.
+
+If the patch version is current but a component remains stale, run targeted publish and read back again. If it still remains stale, inspect solution layers and use only the narrowest approved remediation.
 
 ## Safety
 

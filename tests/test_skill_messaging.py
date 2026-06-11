@@ -60,6 +60,18 @@ class SkillMessagingTests(unittest.TestCase):
         self.assertIn("10-30 minute duration window", execution_reference)
         self.assertIn("bump version before import", execution_reference)
 
+    def test_core_managed_promotion_audit_requires_readback(self) -> None:
+        alm_skill = (REPO_ROOT / "skills" / "solution-alm-delivery" / "SKILL.md").read_text(encoding="utf-8")
+        readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+        verification_reference = (REPO_ROOT / "references" / "verification-and-recovery.md").read_text(encoding="utf-8")
+
+        self.assertIn("Managed Promotion Audit", alm_skill)
+        self.assertIn("--promotion-audit-spec", alm_skill)
+        self.assertIn("source or DEV expected state", verification_reference)
+        self.assertIn("target live read-back", verification_reference)
+        self.assertIn("solution version", readme)
+        self.assertIn("not completion proof", readme)
+
 
 if __name__ == "__main__":
     unittest.main()

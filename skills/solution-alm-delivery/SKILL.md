@@ -39,7 +39,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 
 | Helper | Purpose |
 | --- | --- |
-| `validate_delivery.py` | Run safe delivery validation across repo, build, pack, and an optional read-only live preflight — without importing or mutating Dataverse. Pass `--preflight-spec` to emit the live-mutation preflight gate; add `--live-preflight` for a read-only WhoAmI connectivity check. Use this before any solution import. |
+| `validate_delivery.py` | Run safe delivery validation across repo, build, pack, and an optional read-only live preflight — without importing or mutating Dataverse. Pass `--preflight-spec` to emit the live-mutation preflight gate; `--promotion-audit-spec` to run the managed promotion audit (source / package / target read-back evidence); add `--live-preflight` for a read-only WhoAmI connectivity check. Use this before any solution import. |
 | `deploy_solution.py` | Pack, optionally run Power Apps Checker, import, and publish a solution. Blocks stale artifacts unless `--artifact-generated-this-session` or `--explicit-artifact-selection` is set, and enforces a blast-radius guard via `--change-scope {targeted-component,solution-subset,whole-solution}`; broadening to a whole-solution import on a `--shared-unmanaged-environment` requires explicit `--allow-broad-import`. Honors lock-retry and `--max-runtime-seconds` budgets. |
 | `add_solution_components.py` | Add resolved components to a target solution through the shared SDK helper from a `--spec`. Adds only the scoped components named; does not pull in broad required components or subcomponents unless the spec/user accepts the expanded blast radius. |
 | `solution_version.py` | Set or increment the 4-part solution version in the unpacked `Other/Solution.xml` (`--version`, `--increment {build,revision}`, or explicit parts), and optionally sync the version online with `--online`. Bump the version before re-importing a package. |
@@ -54,6 +54,12 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 4. **Validate behind the preflight.** Run `validate_delivery.py` (with `--preflight-spec`) so the live-mutation gate is emitted and repo/build/pack evidence is gathered before any import.
 5. **Deploy only the approved primitive.** Use `deploy_solution.py` only after blast-radius approval, with `--change-scope` set honestly and a freshly generated artifact. If a narrower targeted primitive exists in a sibling skill, prefer it.
 6. **Verify at the narrowest true level.** After import/publish, confirm the intended component landed in the intended solution and app surface; run one focused live check if behavior changed. Do not call a change "deployed" beyond what was verified — see `references/verification-and-recovery.md`.
+
+## Managed promotion audit
+
+For managed promotion from a working environment (DEV) to a validation or later environment, a successful import and a bumped solution version are **not completion proof**. Before closeout, run the **Managed Promotion Audit** with `validate_delivery.py --promotion-audit-spec <spec.json>` (or produce the same fields manually).
+
+Required evidence per release component: source or DEV expected state, managed-package evidence from the fresh ZIP, and a **target live read-back** after import and publish — with a per-component status (aligned, source mismatch, package mismatch, target stale, missing read-back, incomplete evidence, or needs review) and a remediation recommendation for anything not aligned. Always require an explicit target read-back for high-risk metadata in scope: command bars / RibbonDiffXml, table labels, forms, views, flows, security roles, plug-in steps, and configuration rows. If the solution version updated but live effective metadata is stale, do not re-import blindly — try a targeted publish and read-back first, inspect solution layers if it stays stale, then use the narrowest approved remediation. See `references/verification-and-recovery.md`.
 
 ## Safety and decision rules
 
