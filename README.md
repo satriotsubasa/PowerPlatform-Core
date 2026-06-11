@@ -41,10 +41,11 @@ PowerPlatform-Core installs from one shared source into either agent.
 
 ```text
 codex plugin marketplace add satriotsubasa/PowerPlatform-Core
-codex plugin add powerplatform-core
 ```
 
-> The exact subcommand can vary by Codex version — confirm with `codex plugin --help` if either line is rejected.
+Then **install from inside Codex** — there is no `codex plugin add` shell command. Launch `codex`, run `/plugins`, open **powerplatform-core** in the list, choose **Install plugin**, then **restart Codex**.
+
+> `marketplace add` only *registers* the source; it never installs — installation happens in the `/plugins` browser. If the plugin doesn't appear there, run `codex plugin marketplace upgrade` and retry.
 
 ### Requirements
 
@@ -58,6 +59,8 @@ The skills are code-first, so the live path needs a small local toolchain:
 | **Microsoft Power Platform CLI (`pac`)** | Authentication, solution, and deployment operations. |
 
 Interactive sign-in is platform-aware: on **Windows** it uses the WAM broker; on **macOS/Linux** it falls back to the **device-code flow** (the tool prints a code to complete in a browser).
+
+> **Migrating from the classic skill?** The old `~/.codex/skills/powerplatform-core` copy-install is deprecated; the plugin replaces it. Once the plugin loads in Codex, delete that folder to avoid a duplicate `powerplatform-core` skill.
 
 ## The skills
 

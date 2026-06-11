@@ -8,7 +8,7 @@
       "name": "powerplatform-core",
       "source": {
         "source": "local",
-        "path": "./"
+        "path": "./plugins/powerplatform-core"
       },
       "policy": {
         "installation": "AVAILABLE",

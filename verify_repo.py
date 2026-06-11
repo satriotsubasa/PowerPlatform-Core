@@ -12,17 +12,19 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 IS_WINDOWS = os.name == "nt"
+# The plugin (skills + shared toolchain + tests) lives in plugins/powerplatform-core/.
+PLUGIN_ROOT = ROOT / "plugins" / "powerplatform-core"
 # DataverseOps multi-targets net8.0 (+ net8.0-windows on Windows) and builds everywhere.
 CROSS_PLATFORM_DOTNET_PROJECTS = (
-    ROOT / "tools" / "CodexPowerPlatform.DataverseOps" / "CodexPowerPlatform.DataverseOps.csproj",
+    PLUGIN_ROOT / "tools" / "CodexPowerPlatform.DataverseOps" / "CodexPowerPlatform.DataverseOps.csproj",
 )
 # AuthDialog is a WPF (net8.0-windows) app; it only builds on Windows.
 WINDOWS_ONLY_DOTNET_PROJECTS = (
-    ROOT / "tools" / "CodexPowerPlatform.AuthDialog" / "CodexPowerPlatform.AuthDialog.csproj",
+    PLUGIN_ROOT / "tools" / "CodexPowerPlatform.AuthDialog" / "CodexPowerPlatform.AuthDialog.csproj",
 )
 # The .NET test project targets net8.0-windows.
 WINDOWS_ONLY_DOTNET_TEST_PROJECTS = (
-    ROOT / "tools" / "CodexPowerPlatform.DataverseOps.Tests" / "CodexPowerPlatform.DataverseOps.Tests.csproj",
+    PLUGIN_ROOT / "tools" / "CodexPowerPlatform.DataverseOps.Tests" / "CodexPowerPlatform.DataverseOps.Tests.csproj",
 )
 
 
@@ -42,7 +44,7 @@ def main() -> int:
         run_step("Python syntax", verify_python_sources)
     run_step("Skill structure", verify_skill_structure)
     if not args.skip_tests:
-        run_step("Unit tests", lambda: run_command([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"]))
+        run_step("Unit tests", lambda: run_command([sys.executable, "-m", "unittest", "discover", "-s", "plugins/powerplatform-core/tests", "-v"]))
     if not args.skip_dotnet:
         run_step("Dotnet build", verify_dotnet_projects)
         run_step("Dotnet tests", verify_dotnet_test_projects)
@@ -83,8 +85,7 @@ def verify_python_sources() -> None:
 
 def iter_python_sources() -> list[Path]:
     paths = [ROOT / "verify_repo.py"]
-    for directory_name in ("scripts", "tests"):
-        directory = ROOT / directory_name
+    for directory in (PLUGIN_ROOT / "scripts", PLUGIN_ROOT / "tests"):
         if not directory.exists():
             continue
         paths.extend(
@@ -96,7 +97,7 @@ def iter_python_sources() -> list[Path]:
 def verify_skill_structure() -> None:
     import json
 
-    skills_dir = ROOT / "skills"
+    skills_dir = PLUGIN_ROOT / "skills"
     if skills_dir.exists():
         skill_files = sorted(skills_dir.glob("*/SKILL.md"))
         if not skill_files:
@@ -111,9 +112,9 @@ def verify_skill_structure() -> None:
             if f"name: {path.parent.name}" not in frontmatter:
                 raise RuntimeError(f"{path} frontmatter name must match its folder '{path.parent.name}'.")
     for manifest in (
-        ROOT / ".claude-plugin" / "plugin.json",
+        PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
+        PLUGIN_ROOT / ".codex-plugin" / "plugin.json",
         ROOT / ".claude-plugin" / "marketplace.json",
-        ROOT / ".codex-plugin" / "plugin.json",
         ROOT / ".agents" / "plugins" / "marketplace.json",
     ):
         if manifest.exists():
