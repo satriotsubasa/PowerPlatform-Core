@@ -64,7 +64,6 @@ def main() -> int:
         auto_validate=args.auto_validate,
     )
     spec = apply_selected_solution_to_spec(spec, connection)
-    flow_identity = build_flow_identity(spec, None)
     proposed_client_data = spec.get("clientData")
     semantic_guard = None
     baseline_client_data = None
@@ -131,7 +130,13 @@ def main() -> int:
                 comparison_label="post-deploy",
             )
             if post_findings:
-                raise RuntimeError(build_semantic_guard_error(post_findings))
+                if not args.allow_semantic_drift:
+                    raise RuntimeError(build_semantic_guard_error(post_findings))
+                print(
+                    "WARNING: post-deploy semantic drift detected but allowed via --allow-semantic-drift:\n"
+                    + build_semantic_guard_error(post_findings),
+                    file=sys.stderr,
+                )
         print(completed.stdout.strip())
         return 0
     finally:

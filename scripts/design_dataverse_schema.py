@@ -8,6 +8,7 @@ import re
 import sys
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import quoteattr
 
 from powerplatform_common import discover_repo_context, infer_publisher_prefix, read_json_argument, repo_root, write_json_output
 
@@ -317,9 +318,9 @@ def build_query_example(pattern: dict[str, Any], *, table_logical_name: str, pri
     if not isinstance(filters, list):
         filters = []
 
-    fetch_parts = [f"<fetch><entity name=\"{table_logical_name}\">"]
+    fetch_parts = [f"<fetch><entity name={quoteattr(str(table_logical_name))}>"]
     for column in select:
-        fetch_parts.append(f"<attribute name=\"{column}\" />")
+        fetch_parts.append(f"<attribute name={quoteattr(str(column))} />")
     if filters:
         fetch_parts.append("<filter type=\"and\">")
         for condition in filters:
@@ -331,9 +332,9 @@ def build_query_example(pattern: dict[str, Any], *, table_logical_name: str, pri
             operator = text_value(condition, "operator") or "eq"
             value = condition.get("value")
             if value is None:
-                fetch_parts.append(f"<condition attribute=\"{field}\" operator=\"{operator}\" />")
+                fetch_parts.append(f"<condition attribute={quoteattr(field)} operator={quoteattr(operator)} />")
             else:
-                fetch_parts.append(f"<condition attribute=\"{field}\" operator=\"{operator}\" value=\"{value}\" />")
+                fetch_parts.append(f"<condition attribute={quoteattr(field)} operator={quoteattr(operator)} value={quoteattr(str(value))} />")
         fetch_parts.append("</filter>")
     for sort in order_by:
         if not isinstance(sort, dict):
@@ -342,7 +343,7 @@ def build_query_example(pattern: dict[str, Any], *, table_logical_name: str, pri
         if not field:
             continue
         descending = str(sort.get("direction", "asc")).strip().lower() == "desc"
-        fetch_parts.append(f"<order attribute=\"{field}\" descending=\"{str(descending).lower()}\" />")
+        fetch_parts.append(f"<order attribute={quoteattr(field)} descending=\"{str(descending).lower()}\" />")
     fetch_parts.append("</entity></fetch>")
 
     odata_parts = []

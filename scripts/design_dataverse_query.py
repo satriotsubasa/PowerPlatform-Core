@@ -7,8 +7,9 @@ import argparse
 import sys
 from pathlib import Path
 from typing import Any
+from xml.sax.saxutils import escape, quoteattr
 
-from powerplatform_common import read_json_argument, repo_root, write_json_output
+from powerplatform_common import read_json_argument, write_json_output
 
 
 def main() -> int:
@@ -25,7 +26,6 @@ def main() -> int:
         print("ERROR: --spec must resolve to a JSON object.", file=sys.stderr)
         return 2
 
-    repo_root(Path(args.repo_root))
     payload = build_query_design(spec)
     write_json_output(payload, args.output)
     return 0
@@ -76,7 +76,7 @@ def build_query_design(spec: dict[str, Any]) -> dict[str, Any]:
             "topCount": int(top) if top is not None else None,
             "fetchXml": fetch_xml,
         },
-        "warnings": build_query_warnings(filters, top, select, entity_set_name, filters),
+        "warnings": build_query_warnings(filters, top, select, entity_set_name),
     }
 
 
@@ -84,9 +84,9 @@ def build_fetchxml(table_logical_name: str, select: list[str], filters: list[dic
     parts = ["<fetch"]
     if top is not None:
         parts.append(f" count=\"{int(top)}\"")
-    parts.append(f"><entity name=\"{table_logical_name}\">")
+    parts.append(f"><entity name={quoteattr(str(table_logical_name))}>")
     for column in select:
-        parts.append(f"<attribute name=\"{column}\" />")
+        parts.append(f"<attribute name={quoteattr(str(column))} />")
     if filters:
         parts.append("<filter type=\"and\">")
         for item in filters:
@@ -94,21 +94,21 @@ def build_fetchxml(table_logical_name: str, select: list[str], filters: list[dic
             operator = normalize_operator(str(item.get("operator") or "eq"))
             value = item.get("value")
             if operator in {"null", "not-null"} or value is None:
-                parts.append(f"<condition attribute=\"{field}\" operator=\"{operator}\" />")
+                parts.append(f"<condition attribute={quoteattr(field)} operator={quoteattr(operator)} />")
             elif operator == "in":
-                parts.append(f"<condition attribute=\"{field}\" operator=\"in\">")
+                parts.append(f"<condition attribute={quoteattr(field)} operator=\"in\">")
                 for child_value in ensure_list(value):
-                    parts.append(f"<value>{child_value}</value>")
+                    parts.append(f"<value>{escape(str(child_value))}</value>")
                 parts.append("</condition>")
             elif operator in {"contains", "startswith", "endswith"}:
-                parts.append(f"<condition attribute=\"{field}\" operator=\"like\" value=\"{render_fetch_like_value(operator, value)}\" />")
+                parts.append(f"<condition attribute={quoteattr(field)} operator=\"like\" value={quoteattr(render_fetch_like_value(operator, value))} />")
             else:
-                parts.append(f"<condition attribute=\"{field}\" operator=\"{operator}\" value=\"{value}\" />")
+                parts.append(f"<condition attribute={quoteattr(field)} operator={quoteattr(operator)} value={quoteattr(str(value))} />")
         parts.append("</filter>")
     for item in order_by:
         field = require_text(item, "field")
         descending = str(item.get("direction") or "asc").strip().lower() == "desc"
-        parts.append(f"<order attribute=\"{field}\" descending=\"{str(descending).lower()}\" />")
+        parts.append(f"<order attribute={quoteattr(field)} descending=\"{str(descending).lower()}\" />")
     parts.append("</entity></fetch>")
     return "".join(parts)
 
@@ -147,7 +147,6 @@ def build_query_warnings(
     top: Any,
     select: list[str],
     entity_set_name: str | None,
-    filter_items: list[dict[str, Any]],
 ) -> list[str]:
     warnings = []
     if not entity_set_name:
@@ -158,7 +157,7 @@ def build_query_warnings(
         warnings.append("The query has no explicit top limit, so list actions may return large result sets.")
     if not select:
         warnings.append("The query has no explicit select list, so connector defaults may return wider payloads than necessary.")
-    if any(normalize_operator(str(item.get("operator") or "eq")) == "in" for item in filter_items):
+    if any(normalize_operator(str(item.get("operator") or "eq")) == "in" for item in filters):
         warnings.append("The query uses an 'in' filter. Validate OData support for the specific Dataverse action, or prefer FetchXML if the connector rejects it.")
     return warnings
 

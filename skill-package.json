@@ -8,7 +8,11 @@
     "scripts",
     "references",
     "assets",
-    "tools"
+    "tools",
+    "skills",
+    ".claude-plugin",
+    ".codex-plugin",
+    ".agents"
   ],
   "excludeDirectories": [
     ".git",

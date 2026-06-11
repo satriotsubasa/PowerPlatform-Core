@@ -671,6 +671,7 @@ def inspect_pac_auth() -> list[dict[str, object]]:
             capture_output=True,
             text=True,
             encoding="utf-8",
+            errors="replace",
         )
     except FileNotFoundError:
         return []

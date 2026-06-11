@@ -60,7 +60,20 @@ internal static class SolutionListProcessRunner
         process.Start();
         var stdoutTask = process.StandardOutput.ReadToEndAsync();
         var stderrTask = process.StandardError.ReadToEndAsync();
-        await process.WaitForExitAsync().ConfigureAwait(true);
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
+        try
+        {
+            await process.WaitForExitAsync(timeoutCts.Token).ConfigureAwait(true);
+        }
+        catch (OperationCanceledException)
+        {
+            TryKillProcess(process);
+            return new SolutionListAttemptResult(
+                false,
+                "Solution lookup timed out after 120s.",
+                string.Empty,
+                Array.Empty<SolutionDialogOption>());
+        }
 
         var stdout = await stdoutTask.ConfigureAwait(true);
         var stderr = await stderrTask.ConfigureAwait(true);
@@ -111,5 +124,20 @@ internal static class SolutionListProcessRunner
     private static bool ReadBool(JsonObject node, string camelCase, string pascalCase)
     {
         return node[camelCase]?.GetValue<bool>() == true || node[pascalCase]?.GetValue<bool>() == true;
+    }
+
+    private static void TryKillProcess(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch
+        {
+            // Best-effort cleanup; the timeout result is the meaningful signal.
+        }
     }
 }

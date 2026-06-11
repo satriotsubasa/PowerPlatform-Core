@@ -1546,8 +1546,11 @@ def run_push_plugin_helper(
         command.append("--skip-step-state-reconcile")
     if value := options.get("stepStateSpec"):
         command.extend(["--step-state-spec", json.dumps(value) if isinstance(value, (dict, list)) else str(value)])
-    if value := options.get("maxRuntimeSeconds") or options.get("max_runtime_seconds"):
-        command.extend(["--max-runtime-seconds", str(value)])
+    max_runtime_value = options.get("maxRuntimeSeconds")
+    if max_runtime_value is None:
+        max_runtime_value = options.get("max_runtime_seconds")
+    if max_runtime_value is not None:
+        command.extend(["--max-runtime-seconds", str(max_runtime_value)])
 
     if connection:
         command.extend(build_child_live_args(connection, auth_flow=auth_flow, force_prompt=force_prompt, verbose=verbose))
@@ -1653,9 +1656,9 @@ def run_deploy_pcf_helper(options: dict[str, Any], *, repo: Path, connection: di
         command.append("--stage-and-upgrade")
     if options.get("convertToManaged"):
         command.append("--convert-to-managed")
-    if value := options.get("lockRetries"):
+    if (value := options.get("lockRetries")) is not None:
         command.extend(["--lock-retries", str(value)])
-    if value := options.get("lockWaitSeconds"):
+    if (value := options.get("lockWaitSeconds")) is not None:
         command.extend(["--lock-wait-seconds", str(value)])
     if value := options.get("verbosity"):
         command.extend(["--verbosity", str(value)])
@@ -1818,12 +1821,15 @@ def run_deploy_solution_helper(options: dict[str, Any], *, repo: Path, connectio
         command.append("--explicit-artifact-selection")
     if options.get("skipImport"):
         command.append("--skip-import")
-    if value := options.get("lockRetries"):
+    if (value := options.get("lockRetries")) is not None:
         command.extend(["--lock-retries", str(value)])
-    if value := options.get("lockWaitSeconds"):
+    if (value := options.get("lockWaitSeconds")) is not None:
         command.extend(["--lock-wait-seconds", str(value)])
-    if value := options.get("maxRuntimeSeconds") or options.get("max_runtime_seconds"):
-        command.extend(["--max-runtime-seconds", str(value)])
+    max_runtime_value = options.get("maxRuntimeSeconds")
+    if max_runtime_value is None:
+        max_runtime_value = options.get("max_runtime_seconds")
+    if max_runtime_value is not None:
+        command.extend(["--max-runtime-seconds", str(max_runtime_value)])
 
     environment_url = options.get("environmentUrl")
     if not environment_url and connection:
@@ -1961,8 +1967,12 @@ def script_name_to_step_type(script_name: str) -> str:
         "add_solution_components.py": "add-solution-components",
         "register_plugin_headless.py": "register-plugin-assembly",
         "register_plugin_package_headless.py": "register-plugin-package",
+        "update_main_form.py": "update-main-form",
+        "update_view.py": "update-view",
+        "update_form_events.py": "update-form-events",
+        "sync_webresources_batch.py": "sync-webresources-batch",
     }
-    return mapping[script_name]
+    return mapping.get(script_name, "")
 
 
 def deep_copy_json(value: dict[str, Any]) -> dict[str, Any]:

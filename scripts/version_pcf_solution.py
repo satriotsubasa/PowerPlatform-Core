@@ -57,6 +57,12 @@ def main() -> int:
         increment=args.increment,
     )
 
+    if not args.version and not args.increment and new_solution_version == normalize_solution_version(str(current_version)):
+        parser.error(
+            "No version change requested. Pass --version or --increment "
+            "(the computed version matches the current version, so nothing would change)."
+        )
+
     updated_manifest_paths = []
     update_all = args.update_all_manifests or len(source_manifest_paths) > 1
     for manifest_path in source_manifest_paths:

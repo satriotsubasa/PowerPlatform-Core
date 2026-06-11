@@ -399,12 +399,20 @@ internal static partial class Program
 
     private static IPublicClientApplication BuildPublicClientApplication(string appId, string redirectUri, string tenantId)
     {
-        var app = PublicClientApplicationBuilder
+        var builder = PublicClientApplicationBuilder
             .Create(appId)
             .WithAuthority(AzureCloudInstance.AzurePublic, tenantId)
-            .WithRedirectUri(redirectUri)
-            .WithBroker(new BrokerOptions(BrokerOptions.OperatingSystems.Windows))
-            .Build();
+            .WithRedirectUri(redirectUri);
+
+        // The WAM broker is Windows-only. On Windows this branch is always taken, so
+        // sign-in is unchanged; on macOS/Linux we skip it and use the browser/device-code
+        // flows, which MSAL supports cross-platform.
+        if (OperatingSystem.IsWindows())
+        {
+            builder = builder.WithBroker(new BrokerOptions(BrokerOptions.OperatingSystems.Windows));
+        }
+
+        var app = builder.Build();
 
         var cacheDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -412,9 +420,19 @@ internal static partial class Program
             "Dataverse");
         Directory.CreateDirectory(cacheDirectory);
 
-        var storageProperties = new StorageCreationPropertiesBuilder("msal_token_cache.bin", cacheDirectory).Build();
-        var cacheHelper = MsalCacheHelper.CreateAsync(storageProperties).GetAwaiter().GetResult();
-        cacheHelper.RegisterCache(app.UserTokenCache);
+        // Persistent token cache is best-effort. On Windows it uses DPAPI as before; on
+        // some Linux/macOS setups without a configured secret store the cache cannot be
+        // created, so we continue without persistence instead of failing the command.
+        try
+        {
+            var storageProperties = new StorageCreationPropertiesBuilder("msal_token_cache.bin", cacheDirectory).Build();
+            var cacheHelper = MsalCacheHelper.CreateAsync(storageProperties).GetAwaiter().GetResult();
+            cacheHelper.RegisterCache(app.UserTokenCache);
+        }
+        catch (Exception)
+        {
+            // No persistent token cache available on this host; tokens are re-acquired per run.
+        }
 
         return app;
     }
@@ -455,6 +473,11 @@ internal static partial class Program
         catch (MsalUiRequiredException)
         {
             Log(verbose, "MSAL silent token acquisition requires user interaction.");
+            return await AcquireInteractiveTokenAsync(publicClient, scope, username, authFlow, verbose, parentWindowHandle).ConfigureAwait(false);
+        }
+        catch (MsalServiceException ex)
+        {
+            Log(verbose, $"MSAL silent token acquisition failed ({ex.ErrorCode}); falling back to interactive sign-in.");
             return await AcquireInteractiveTokenAsync(publicClient, scope, username, authFlow, verbose, parentWindowHandle).ConfigureAwait(false);
         }
     }

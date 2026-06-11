@@ -18,6 +18,7 @@ def main() -> int:
     parser.add_argument("--template", default="field", choices=["field", "dataset"], help="PCF template type.")
     parser.add_argument("--framework", choices=["none", "react"], default="none", help="PCF framework option.")
     parser.add_argument("--run-npm-install", action="store_true", help="Run npm install during pac pcf init.")
+    parser.add_argument("--max-runtime-seconds", type=float, default=600.0, help="Maximum seconds allowed for pac pcf init (including npm install when requested) before failing.")
     parser.add_argument("--output", help="Optional JSON output path.")
     args = parser.parse_args()
 
@@ -43,7 +44,7 @@ def main() -> int:
     if args.run_npm_install:
         command.append("--run-npm-install")
 
-    run_command(command, cwd=repo)
+    run_command(command, cwd=repo, timeout_seconds=args.max_runtime_seconds)
 
     manifest_path = output_dir / "ControlManifest.Input.xml"
     write_json_output(

@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
@@ -60,6 +61,29 @@ class VersionPcfSolutionTests(unittest.TestCase):
 
             self.assertIn('version="1.2.4"', manifest_path.read_text(encoding="utf-8"))
             self.assertIn("<Version>1.2.4.0</Version>", solution_path.read_text(encoding="utf-8"))
+
+    def test_main_errors_and_does_not_rewrite_when_no_version_or_increment(self) -> None:
+        pcf_context = {
+            "package_root": "pkg",
+            "pcf_project_file": "control.pcfproj",
+            "manifests": [{"manifest_path": "ControlManifest.Input.xml", "version": "1.2.3"}],
+            "solution_context": {"version": "1.2.3.4"},
+            "solution_xml": "Solution.xml",
+        }
+
+        with mock.patch.object(version_pcf_solution, "repo_root", return_value=Path(".")), \
+             mock.patch.object(version_pcf_solution, "resolve_pcf_context", return_value=pcf_context), \
+             mock.patch.object(version_pcf_solution, "update_manifest_version") as update_manifest, \
+             mock.patch.object(version_pcf_solution, "update_solution_version") as update_solution, \
+             mock.patch.object(version_pcf_solution, "write_json_output") as write_json_output, \
+             mock.patch.object(sys, "argv", ["version_pcf_solution.py"]):
+            with self.assertRaises(SystemExit) as raised:
+                version_pcf_solution.main()
+
+        self.assertNotEqual(raised.exception.code, 0)
+        update_manifest.assert_not_called()
+        update_solution.assert_not_called()
+        write_json_output.assert_not_called()
 
 
 if __name__ == "__main__":

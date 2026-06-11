@@ -27,12 +27,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
+import subprocess
 import sys
 from pathlib import Path
-import subprocess
 
 
 CONFIG_FILE = "power.config.json"
+
+
+def resolve_executable(name: str) -> str:
+    """Resolve a command name to a concrete path.
+
+    On Windows, tools like npm/npx/pac ship as .cmd shims that ``subprocess``
+    (without ``shell=True``) will not find by bare name. ``shutil.which`` honours
+    PATHEXT and returns the real target; we fall back to the bare name so the
+    caller's FileNotFoundError handling still fires when the tool is missing.
+    """
+    return shutil.which(name) or name
 
 
 def find_config(app_path: Path) -> Path | None:
@@ -73,7 +85,7 @@ def discover_app_paths(root: Path) -> list[Path]:
 
 def check_node_available() -> bool:
     try:
-        subprocess.run(["node", "--version"], capture_output=True, check=True)
+        subprocess.run([resolve_executable("node"), "--version"], capture_output=True, check=True)
         return True
     except (FileNotFoundError, subprocess.CalledProcessError):
         return False
@@ -81,7 +93,7 @@ def check_node_available() -> bool:
 
 def check_pac_available() -> bool:
     try:
-        subprocess.run(["pac", "help"], capture_output=True, check=True)
+        subprocess.run([resolve_executable("pac"), "help"], capture_output=True, check=True)
         return True
     except (FileNotFoundError, subprocess.CalledProcessError):
         return False
@@ -92,7 +104,8 @@ def run_command(cmd: list[str], cwd: Path, dry_run: bool) -> int:
     if dry_run:
         print("  [dry-run: skipped]")
         return 0
-    result = subprocess.run(cmd, cwd=cwd)
+    resolved = [resolve_executable(cmd[0]), *cmd[1:]]
+    result = subprocess.run(resolved, cwd=cwd)
     return result.returncode
 
 
@@ -145,7 +158,23 @@ def push_single_app(app_path: Path, cli: str, solution_name: str | None,
     return rc
 
 
+def _make_console_utf8_safe() -> None:
+    """Best-effort: switch stdout/stderr to UTF-8 so the box-drawing and check
+    characters in this script's output do not raise UnicodeEncodeError on a
+    cp1252 Windows console. Silently no-ops on streams that cannot reconfigure.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def main() -> int:
+    _make_console_utf8_safe()
     parser = argparse.ArgumentParser(
         description="Build and push Power Apps code app(s) to Power Platform.",
     )
