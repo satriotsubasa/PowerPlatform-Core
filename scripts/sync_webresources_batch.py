@@ -130,6 +130,7 @@ def main() -> int:
                 break
 
     publish_result = None
+    publish_warning = None
     if publish_after_all and changed_and_requested_publish:
         command = [
             "webresource",
@@ -151,7 +152,14 @@ def main() -> int:
         if args.verbose:
             command.append("--verbose")
         completed = run_dataverse_tool(command, cwd=repo)
-        publish_result = json.loads(completed.stdout)
+        try:
+            publish_result = json.loads(completed.stdout)
+        except (json.JSONDecodeError, ValueError) as exc:
+            publish_warning = (
+                f"The publish-many step completed but returned a non-JSON response: {exc}. "
+                "The web resources were synced; verify the publish manually if needed."
+            )
+            publish_result = {"raw": completed.stdout, "warning": publish_warning}
 
     payload = {
         "success": success,
@@ -161,6 +169,8 @@ def main() -> int:
         "publishResult": publish_result,
         "results": results,
     }
+    if publish_warning:
+        payload["publishWarning"] = publish_warning
     if error_message:
         payload["error"] = error_message
 

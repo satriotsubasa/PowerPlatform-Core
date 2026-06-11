@@ -53,6 +53,7 @@ def main() -> int:
     parser.add_argument("--convert-to-managed", action="store_true", help="Convert to managed during solution import in solution-package mode.")
     parser.add_argument("--lock-retries", type=int, default=20, help="Number of retry waits for Dataverse import or publish locks before failing.")
     parser.add_argument("--lock-wait-seconds", type=int, default=30, help="Seconds to wait between Dataverse import or publish lock retries.")
+    parser.add_argument("--max-runtime-seconds", type=float, default=600.0, help="Maximum seconds allowed for the npm install, npm build, and pac push or import steps before failing.")
     parser.add_argument("--verbosity", choices=["minimal", "normal", "detailed", "diagnostic"], help="PAC PCF push verbosity.")
     parser.add_argument("--output", help="Optional JSON output path.")
     args = parser.parse_args()
@@ -62,13 +63,13 @@ def main() -> int:
     package_root = Path(pcf_context["package_root"])
 
     if not args.skip_install:
-        run_command(["npm", "install"], cwd=package_root)
+        run_command(["npm", "install"], cwd=package_root, timeout_seconds=args.max_runtime_seconds)
 
     if not args.skip_build:
         build_command = ["npm", "run", "build"]
         if args.production:
             build_command.extend(["--", "--buildMode", "production"])
-        run_command(build_command, cwd=package_root)
+        run_command(build_command, cwd=package_root, timeout_seconds=args.max_runtime_seconds)
 
     mode = resolve_mode(args.mode, pcf_context)
     version_alignment = evaluate_version_alignment(pcf_context)
@@ -202,6 +203,7 @@ def execute_direct_push(
         cwd=package_root,
         retries=args.lock_retries,
         wait_seconds=args.lock_wait_seconds,
+        max_runtime_seconds=args.max_runtime_seconds,
     )
 
     return {
@@ -344,7 +346,10 @@ def build_solution_wrapper(solution_project: Path, *, configuration: str, cwd: P
     try:
         run_command(msbuild_command, cwd=cwd)
         return
-    except Exception as msbuild_error:
+    except FileNotFoundError as msbuild_error:
+        # msbuild is not installed: fall back to dotnet build. A genuine compile
+        # failure (non-zero exit -> RuntimeError) is NOT caught here so a real
+        # build error surfaces instead of triggering a second full build.
         dotnet_command = [
             "dotnet",
             "build",

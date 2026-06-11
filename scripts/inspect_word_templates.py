@@ -16,6 +16,15 @@ WORD_NAMESPACE = {"w": "http://schemas.openxmlformats.org/wordprocessingml/2006/
 WORD_TEMPLATE_SUFFIXES = {".docx", ".dotx"}
 WORD_PART_PREFIX = "word/"
 WORD_PART_SUFFIXES = {".xml"}
+# Parts under word/ that never carry content controls; match exact part names
+# (or the theme/ subfolder) so legitimate parts like word/customStyles.xml are
+# not excluded by a loose substring such as "/styles".
+WORD_PART_EXCLUDED_NAMES = {
+    "word/styles.xml",
+    "word/styleswitheffects.xml",
+    "word/fonttable.xml",
+}
+WORD_PART_EXCLUDED_PREFIXES = ("word/theme/",)
 
 
 def main() -> int:
@@ -101,7 +110,7 @@ def inspect_template(path: Path, *, repo: Path, summary_only: bool) -> dict[str,
             lower = part_name.lower()
             if not lower.startswith(WORD_PART_PREFIX) or Path(lower).suffix not in WORD_PART_SUFFIXES:
                 continue
-            if "/theme/" in lower or "/fonttable" in lower or "/styles" in lower:
+            if lower in WORD_PART_EXCLUDED_NAMES or lower.startswith(WORD_PART_EXCLUDED_PREFIXES):
                 continue
             with archive.open(part_name) as stream:
                 try:
@@ -120,7 +129,7 @@ def inspect_template(path: Path, *, repo: Path, summary_only: bool) -> dict[str,
 
     document = {
         "path": str(path),
-        "relativePath": str(path.relative_to(repo)) if path.is_relative_to(repo) else str(path),
+        "relativePath": path.relative_to(repo).as_posix() if path.is_relative_to(repo) else str(path),
         "fileName": path.name,
         "controlCount": len(controls),
         "duplicateTags": sorted(name for name, count in duplicate_tags.items() if count > 1),

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import unittest
+import unittest.mock
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
@@ -163,6 +164,29 @@ class ApplyRequirementSpecTests(unittest.TestCase):
         self.assertEqual(captured["command"][timeout_index], "180")
         self.assertIn("--skip-step-state-verification", captured["command"])
         self.assertIn("--skip-step-state-reconcile", captured["command"])
+
+    def test_run_deploy_solution_helper_honors_zero_numeric_options(self) -> None:
+        captured: dict[str, object] = {}
+
+        def fake_run_command(command: list[str], *, cwd: Path | None = None, check: bool = True) -> object:
+            captured["command"] = command
+            return type("Result", (), {"stdout": '{"success": true}'})()
+
+        with unittest.mock.patch.object(apply_requirement_spec, "run_command", side_effect=fake_run_command):
+            apply_requirement_spec.run_deploy_solution_helper(
+                {
+                    "lockRetries": 0,
+                    "lockWaitSeconds": 0,
+                    "maxRuntimeSeconds": 0,
+                },
+                repo=Path.cwd(),
+                connection={"environment_url": "https://contoso.crm.dynamics.com"},
+            )
+
+        command = captured["command"]
+        for flag in ("--lock-retries", "--lock-wait-seconds", "--max-runtime-seconds"):
+            self.assertIn(flag, command)
+            self.assertEqual(command[command.index(flag) + 1], "0")
 
 
 if __name__ == "__main__":

@@ -79,9 +79,12 @@ def main() -> int:
     spec = apply_selected_solution_to_spec(spec, connection)
     spec = apply_plugin_step_state_defaults_to_registration_spec(spec, load_plugin_step_state_contract(repo))
     spec["packagePath"] = str(package_file)
-    spec.setdefault("uniqueName", package_metadata.get("id"))
-    spec.setdefault("name", package_metadata.get("title") or package_metadata.get("id"))
-    spec.setdefault("version", package_metadata.get("version"))
+    if package_metadata.get("id"):
+        spec.setdefault("uniqueName", package_metadata["id"])
+    if package_metadata.get("title") or package_metadata.get("id"):
+        spec.setdefault("name", package_metadata.get("title") or package_metadata.get("id"))
+    if package_metadata.get("version"):
+        spec.setdefault("version", package_metadata["version"])
     if package_metadata.get("description") and not spec.get("description"):
         spec["description"] = package_metadata["description"]
 

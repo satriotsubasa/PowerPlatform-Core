@@ -12,6 +12,8 @@ from typing import Any
 from powerplatform_common import read_json_argument, repo_root, write_json_output
 
 FUNCTION_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+STRING_LITERAL_RE = re.compile(r"\"(?:[^\"]|\"\")*\"|'(?:[^']|'')*'")
+IN_OPERATOR_RE = re.compile(r"\b(in|exactin)\b", re.IGNORECASE)
 DELEGATION_FUNCTIONS = {"Search", "Distinct", "AddColumns", "GroupBy", "Ungroup", "ForAll"}
 WRITE_FUNCTIONS = {"Patch", "SubmitForm", "Collect", "ClearCollect", "Remove", "RemoveIf", "UpdateIf"}
 
@@ -130,8 +132,8 @@ def find_delegation_risks(formula: str, functions: list[str]) -> list[dict[str, 
                     "message": f"{function_name} often needs delegation review against the connected data source.",
                 }
             )
-    lowered = formula.lower()
-    if " exactin " in lowered or " in " in lowered:
+    stripped = STRING_LITERAL_RE.sub(" ", formula)
+    if IN_OPERATOR_RE.search(stripped):
         findings.append(
             {
                 "severity": "medium",

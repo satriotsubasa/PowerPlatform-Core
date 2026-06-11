@@ -64,6 +64,7 @@ def run_command(
             capture_output=True,
             text=True,
             encoding="utf-8",
+            errors="replace",
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
@@ -373,6 +374,16 @@ def dataverse_tool_project() -> Path:
     return skill_root() / "tools" / "CodexPowerPlatform.DataverseOps" / "CodexPowerPlatform.DataverseOps.csproj"
 
 
+def dataverse_tool_framework() -> str:
+    """Pick the .NET target framework the DataverseOps tool runs under.
+
+    The tool multi-targets net8.0 (cross-platform: browser/device-code auth) and
+    net8.0-windows (adds the Windows WAM broker). On Windows we run the windows build
+    so broker sign-in is unchanged; on macOS/Linux we run the plain net8.0 build.
+    """
+    return "net8.0-windows" if os.name == "nt" else "net8.0"
+
+
 def dataverse_tool_dll() -> Path:
     return (
         skill_root()
@@ -380,7 +391,7 @@ def dataverse_tool_dll() -> Path:
         / "CodexPowerPlatform.DataverseOps"
         / "bin"
         / "Debug"
-        / "net8.0-windows"
+        / dataverse_tool_framework()
         / "CodexPowerPlatform.DataverseOps.dll"
     )
 
@@ -406,7 +417,7 @@ def build_dotnet_project(project_path: Path) -> None:
 
 
 def run_dataverse_tool(command_args: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
-    args = ["dotnet", "run", "--project", str(dataverse_tool_project()), "--"] + command_args
+    args = ["dotnet", "run", "--project", str(dataverse_tool_project()), "-f", dataverse_tool_framework(), "--"] + command_args
     return run_command(args, cwd=cwd or skill_root())
 
 
@@ -937,6 +948,16 @@ def resolve_live_connection(
         username_value = payload.get("username") or payload.get("Username") or resolved_username
         tenant_value = payload.get("tenantId") or payload.get("TenantId") or resolved_tenant_id
         selected_solution = payload.get("selectedSolution") or payload.get("SelectedSolution") or {}
+        if not environment_value:
+            raise RuntimeError(
+                "The authentication dialog did not return an environment URL. Complete the "
+                "interactive sign-in and solution selection, or pass --environment-url explicitly."
+            )
+        if not username_value:
+            raise RuntimeError(
+                "The authentication dialog did not return a username. Complete the interactive "
+                "sign-in before continuing."
+            )
         return {
             "environment_url": environment_value,
             "username": username_value,

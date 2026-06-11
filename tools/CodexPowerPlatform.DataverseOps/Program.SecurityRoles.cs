@@ -313,6 +313,7 @@ internal static partial class Program
     {
         var resolvedBusinessUnitId = ResolveBusinessUnitId(client, businessUnitId, businessUnitName, allowDefaultRoot: false);
         var query = BuildSecurityRoleQuery(solutionUniqueName, resolvedBusinessUnitId, includeSystemGenerated: true);
+        query.PageInfo = null;
         query.TopCount = 2;
 
         var selectorCount = 0;

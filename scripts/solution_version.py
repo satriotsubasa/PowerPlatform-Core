@@ -58,7 +58,6 @@ def main() -> int:
         revision_version=args.revision_version,
     )
     updated_text = VERSION_RE.sub(rf"\g<1>{new_version}\g<3>", xml_text, count=1)
-    solution_xml.write_text(updated_text, encoding="utf-8")
 
     online_updated = False
     connection = None
@@ -72,7 +71,15 @@ def main() -> int:
             auto_validate=args.auto_validate,
         )
 
-    solution_name = args.solution_name or (connection["solution_unique_name"] if connection else None) or infer_solution_name(updated_text)
+    selected_solution_name = connection["solution_unique_name"] if connection else None
+    if args.solution_name and selected_solution_name and args.solution_name != selected_solution_name:
+        raise RuntimeError(
+            "Conflicting online versioning target: --solution-name "
+            f"'{args.solution_name}' does not match the auth-dialog-selected solution "
+            f"'{selected_solution_name}'. Pass a matching --solution-name or omit it."
+        )
+
+    solution_name = args.solution_name or selected_solution_name or infer_solution_name(updated_text)
     if args.online:
         if not solution_name:
             raise RuntimeError("Could not infer the solution unique name for online versioning. Pass --solution-name.")
@@ -88,8 +95,17 @@ def main() -> int:
             "--environment",
             environment_url,
         ]
-        run_command(command, cwd=repo)
+        # Write the local file just before the online sync so we can roll it back
+        # if the online step fails and avoid leaving the repo bumped on failure.
+        solution_xml.write_text(updated_text, encoding="utf-8")
+        try:
+            run_command(command, cwd=repo)
+        except Exception:
+            solution_xml.write_text(xml_text, encoding="utf-8")
+            raise
         online_updated = True
+    else:
+        solution_xml.write_text(updated_text, encoding="utf-8")
 
     write_json_output(
         {
