@@ -61,41 +61,57 @@ internal static partial class Program
             "pluginassembly",
             new ColumnSet("pluginassemblyid", "name", "version"),
             new ConditionExpression("name", ConditionOperator.Equal, assemblyName));
+
+        var reuseExisting = spec.ReuseExistingAssembly ?? false;
+        var reusedExistingAssembly = false;
+        Guid assemblyId;
         if (existingAssembly is not null)
         {
-            throw new InvalidOperationException(
-                $"A plug-in assembly named '{assemblyName}' already exists with ID {existingAssembly.Id}. " +
-                "Use the update flow instead of first registration.");
+            if (!reuseExisting)
+            {
+                throw new InvalidOperationException(
+                    $"A plug-in assembly named '{assemblyName}' already exists with ID {existingAssembly.Id}. " +
+                    "Re-run with reuseExistingAssembly to reconcile its plug-in types and steps, or use the update flow to replace the assembly content.");
+            }
+
+            // Recovery path: the assembly is already uploaded (e.g. a prior partial run). Reuse it
+            // and reconcile the plug-in types and steps; do not re-upload content here.
+            assemblyId = existingAssembly.Id;
+            reusedExistingAssembly = true;
+        }
+        else
+        {
+            var assemblyEntity = new Entity("pluginassembly")
+            {
+                ["name"] = assemblyName,
+                ["content"] = Convert.ToBase64String(File.ReadAllBytes(assemblyPath)),
+                ["culture"] = culture,
+                ["publickeytoken"] = publicKeyToken,
+                ["version"] = version,
+                ["sourcetype"] = new OptionSetValue(ParsePluginAssemblySourceType(spec.SourceType)),
+                ["isolationmode"] = new OptionSetValue(ParsePluginAssemblyIsolationMode(spec.IsolationMode)),
+            };
+            var description = EmptyToNull(spec.Description);
+            if (description is not null)
+            {
+                assemblyEntity["description"] = description;
+            }
+
+            var createAssemblyRequest = new CreateRequest
+            {
+                Target = assemblyEntity,
+            };
+            ApplySolutionParameter(createAssemblyRequest, spec.SolutionUniqueName);
+            assemblyId = ((CreateResponse)client.Execute(createAssemblyRequest)).id;
         }
 
-        var assemblyEntity = new Entity("pluginassembly")
-        {
-            ["name"] = assemblyName,
-            ["content"] = Convert.ToBase64String(File.ReadAllBytes(assemblyPath)),
-            ["culture"] = culture,
-            ["publickeytoken"] = publicKeyToken,
-            ["version"] = version,
-            ["sourcetype"] = new OptionSetValue(ParsePluginAssemblySourceType(spec.SourceType)),
-            ["isolationmode"] = new OptionSetValue(ParsePluginAssemblyIsolationMode(spec.IsolationMode)),
-        };
-        var description = EmptyToNull(spec.Description);
-        if (description is not null)
-        {
-            assemblyEntity["description"] = description;
-        }
-
-        var createAssemblyRequest = new CreateRequest
-        {
-            Target = assemblyEntity,
-        };
-        ApplySolutionParameter(createAssemblyRequest, spec.SolutionUniqueName);
-        var assemblyId = ((CreateResponse)client.Execute(createAssemblyRequest)).id;
-
+        // The classic database-assembly path does NOT auto-create plugintype records - the client
+        // must create them (the Plug-in Registration Tool reflects over the DLL to do so). We
+        // already have the type names from the steps, so create them explicitly and idempotently
+        // instead of polling for an auto-discovery that never happens on this path.
         var requiredTypeNames = GetRequiredPluginTypeNames(spec.Steps);
-        var pluginTypes = requiredTypeNames.Length == 0
-            ? new Dictionary<string, Entity>(StringComparer.Ordinal)
-            : WaitForAssemblyPluginTypes(client, assemblyId, requiredTypeNames, ResolvePluginTypeWaitSeconds(spec.PluginTypeWaitSeconds));
-        var createdSteps = CreatePluginSteps(client, spec.SolutionUniqueName, pluginTypes, spec.Steps);
+        var pluginTypes = EnsureAssemblyPluginTypes(client, assemblyId, requiredTypeNames, spec.SolutionUniqueName);
+        var createdSteps = CreatePluginSteps(client, spec.SolutionUniqueName, pluginTypes, spec.Steps, reconcile: reusedExistingAssembly);
 
         var payload = new
         {
@@ -104,6 +120,7 @@ internal static partial class Program
             assemblyId,
             assemblyName,
             assemblyPath,
+            reusedExistingAssembly,
             version,
             culture,
             publicKeyToken,
@@ -197,7 +214,8 @@ internal static partial class Program
         ServiceClient client,
         string? solutionUniqueName,
         IReadOnlyDictionary<string, Entity> pluginTypes,
-        IReadOnlyCollection<PluginStepRegistrationSpec> steps)
+        IReadOnlyCollection<PluginStepRegistrationSpec> steps,
+        bool reconcile = false)
     {
         var createdSteps = new List<object>();
         foreach (var step in steps)
@@ -218,6 +236,27 @@ internal static partial class Program
             {
                 throw new InvalidOperationException(
                     $"Async mode is only supported for post-operation steps. Step '{step.PluginTypeName}' uses stage '{step.Stage}'.");
+            }
+
+            if (reconcile)
+            {
+                var existingStep = FindExistingPluginStep(client, pluginType.Id, message.Id, stage);
+                if (existingStep is not null)
+                {
+                    createdSteps.Add(new
+                    {
+                        sdkMessageProcessingStepId = existingStep.Id,
+                        name = existingStep.GetAttributeValue<string>("name"),
+                        pluginTypeName = step.PluginTypeName,
+                        messageName = step.MessageName,
+                        primaryEntityLogicalName = EmptyToNull(step.PrimaryEntityLogicalName),
+                        stage,
+                        stageLabel = PluginStepStageLabel(stage),
+                        skipped = true,
+                        skippedReason = "A step for this plug-in type, message, and stage already exists.",
+                    });
+                    continue;
+                }
             }
 
             Guid? secureConfigId = null;
@@ -363,21 +402,54 @@ internal static partial class Program
         return requestedWaitSeconds is > 0 ? requestedWaitSeconds.Value : 60;
     }
 
-    private static Dictionary<string, Entity> WaitForAssemblyPluginTypes(
+    private static Dictionary<string, Entity> EnsureAssemblyPluginTypes(
         ServiceClient client,
         Guid assemblyId,
         IReadOnlyCollection<string> typeNames,
-        int waitSeconds)
+        string? solutionUniqueName)
     {
-        return WaitForPluginTypes(
-            client,
-            typeNames,
-            query =>
+        var pluginTypes = QueryAssemblyPluginTypes(client, assemblyId);
+        foreach (var typeName in typeNames)
+        {
+            if (pluginTypes.ContainsKey(typeName))
             {
-                query.Criteria.AddCondition("pluginassemblyid", ConditionOperator.Equal, assemblyId);
-            },
-            "plug-in assembly",
-            waitSeconds);
+                continue;
+            }
+
+            var typeEntity = PluginTypeRegistration.BuildPluginTypeEntity(assemblyId, typeName);
+            var createRequest = new CreateRequest { Target = typeEntity };
+            ApplySolutionParameter(createRequest, solutionUniqueName);
+            typeEntity.Id = ((CreateResponse)client.Execute(createRequest)).id;
+            pluginTypes[typeName] = typeEntity;
+        }
+
+        return pluginTypes;
+    }
+
+    private static Dictionary<string, Entity> QueryAssemblyPluginTypes(ServiceClient client, Guid assemblyId)
+    {
+        var query = new QueryExpression("plugintype")
+        {
+            ColumnSet = new ColumnSet("plugintypeid", "typename", "name", "pluginassemblyid"),
+        };
+        query.Criteria.AddCondition("pluginassemblyid", ConditionOperator.Equal, assemblyId);
+        return client.RetrieveMultiple(query).Entities
+            .Where(entity => !string.IsNullOrWhiteSpace(entity.GetAttributeValue<string>("typename")))
+            .GroupBy(entity => entity.GetAttributeValue<string>("typename"), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First(), StringComparer.Ordinal);
+    }
+
+    private static Entity? FindExistingPluginStep(ServiceClient client, Guid pluginTypeId, Guid sdkMessageId, int stage)
+    {
+        var query = new QueryExpression("sdkmessageprocessingstep")
+        {
+            ColumnSet = new ColumnSet("sdkmessageprocessingstepid", "name"),
+            TopCount = 1,
+        };
+        query.Criteria.AddCondition("eventhandler", ConditionOperator.Equal, pluginTypeId);
+        query.Criteria.AddCondition("sdkmessageid", ConditionOperator.Equal, sdkMessageId);
+        query.Criteria.AddCondition("stage", ConditionOperator.Equal, stage);
+        return client.RetrieveMultiple(query).Entities.FirstOrDefault();
     }
 
     private static Dictionary<string, Entity> WaitForPackagePluginTypes(
@@ -629,6 +701,8 @@ internal static partial class Program
 
         public string? SolutionUniqueName { get; init; }
 
+        public bool? ReuseExistingAssembly { get; init; }
+
         public int? PluginTypeWaitSeconds { get; init; }
 
         public List<PluginStepRegistrationSpec> Steps { get; init; } = new();
@@ -701,5 +775,33 @@ internal static partial class Program
         public string? Description { get; init; }
 
         public List<string>? Attributes { get; init; }
+    }
+}
+
+// Pure helper for building plugintype records, separated so it can be unit-tested without a live
+// connection. The classic database-assembly path requires the client to create plugintype records
+// explicitly; we build them from the step type names rather than relying on server auto-discovery.
+internal static class PluginTypeRegistration
+{
+    public static Entity BuildPluginTypeEntity(Guid assemblyId, string typeName)
+    {
+        if (typeName is null)
+        {
+            throw new ArgumentNullException(nameof(typeName));
+        }
+
+        var trimmed = typeName.Trim();
+        if (trimmed.Length == 0)
+        {
+            throw new InvalidOperationException("Plug-in type name cannot be empty.");
+        }
+
+        return new Entity("plugintype")
+        {
+            ["pluginassemblyid"] = new EntityReference("pluginassembly", assemblyId),
+            ["typename"] = trimmed,
+            ["name"] = trimmed,
+            ["friendlyname"] = trimmed,
+        };
     }
 }

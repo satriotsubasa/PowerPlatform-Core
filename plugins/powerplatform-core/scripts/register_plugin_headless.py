@@ -33,6 +33,7 @@ def main() -> int:
     parser.add_argument("--configuration", default="Debug", help="Build configuration used when inferring the assembly path.")
     parser.add_argument("--framework", help="Override target framework when inferring the assembly output path.")
     parser.add_argument("--skip-build", action="store_true", help="Skip dotnet build before registration.")
+    parser.add_argument("--reuse-existing", action="store_true", help="Reconcile an assembly that already exists (create missing plug-in types and steps) instead of failing. Does not re-upload content - use the update flow for that.")
     parser.add_argument("--environment-url", help="Target Dataverse environment URL.")
     parser.add_argument("--target-url", help="Target org URL or Power Apps environment or solution URL for the auth dialog.")
     parser.add_argument("--username", help="Username for Dataverse authentication.")
@@ -79,6 +80,8 @@ def main() -> int:
     spec = apply_selected_solution_to_spec(spec, connection)
     spec = apply_plugin_step_state_defaults_to_registration_spec(spec, load_plugin_step_state_contract(repo))
     spec["assemblyPath"] = str(plugin_file)
+    if args.reuse_existing:
+        spec["reuseExistingAssembly"] = True
 
     command = [
         "plugin",
