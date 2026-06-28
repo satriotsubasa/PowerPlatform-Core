@@ -1,25 +1,30 @@
 ---
 name: data-operations
 description: >
-  Use for Dataverse row/record DATA and query design - create, update, or upsert rows, seed or
-  sync reference/config data, and design queries. Trigger on "create a record/row", "update this
-  record", "upsert by alternate key", "seed config data", "import/sync these rows", "set a field
-  value on a row", "design an OData / FetchXML query", or "build the List rows filter for a
-  flow", even when no helper is named. Covers keyed create/update/upsert via SDK or Web API and
-  query design across OData, FetchXML, and Power Automate "List rows". Not for table/column/form/
-  view/ribbon METADATA - use dataverse-schema.
+  Use for Dataverse row/record DATA and queries - create, read, update, upsert, or delete rows,
+  seed or sync reference/config data, and design and run queries. Trigger on "create a
+  record/row", "read/retrieve this record", "get the value of a field on a row", "list/query the
+  rows where", "how many rows match", "update this record", "upsert by alternate key", "delete
+  this row", "seed config data", "import/sync these rows", "design an OData / FetchXML query", or
+  "build the List rows filter for a flow", even when no helper is named. Covers keyed
+  create/read/update/upsert/delete via the Dataverse SDK and query execution with bounded paging
+  and total-count reporting, plus query design across OData, FetchXML, and Power Automate "List
+  rows". Not for table/column/form/view/ribbon METADATA - use dataverse-schema.
 ---
 
 # Data Operations
 
-This skill owns Dataverse row create/update/upsert and query design. It is the data branch of the `powerplatform-core` orchestrator — start there to discover repo context and confirm the target environment and solution. Keep data work separate from schema work: a solution import is not the way to sync environment-specific config data, and creating/changing tables or columns belongs in the `dataverse-schema` skill.
+This skill owns Dataverse row create, read, update, upsert, and delete, plus query design and execution. It is the data branch of the `powerplatform-core` orchestrator — start there to discover repo context and confirm the target environment and solution. Keep data work separate from schema work: a solution import is not the way to sync environment-specific config data, and creating/changing tables or columns belongs in the `dataverse-schema` skill.
 
-Default safety posture: create, update, and upsert are in scope when the user asks for them. Do not delete business data unless the user explicitly requests deletion and separately approves it.
+Default safety posture: create, read, update, and upsert are in scope when the user asks for them. Read is non-mutating and needs no preflight. Delete is supported but is the highest-risk write: only delete when the user explicitly asks, and only after the live-mutation preflight and explicit approval.
 
 ## When to use this
 
 - Create a single row, or create-or-update by primary key or alternate key.
+- Read a row back by primary key or alternate key (verification, debugging, or "what's the current value").
+- List or query rows with a FetchXML/spec query, with bounded paging and a count of how many rows match.
 - Update only the columns that changed on a known record.
+- Delete a row by primary key or alternate key (explicit request + preflight).
 - Seed or sync reference/configuration data into an environment.
 - Design a query and get the OData path, FetchXML, and Power Automate "List rows" parameters for a structured spec.
 
@@ -34,6 +39,8 @@ The Python helpers live in the plugin's **`scripts/`** directory at the plugin r
 
 - `design_dataverse_query.py` — offline query designer. Takes `--spec` (a JSON object or path describing `tableLogicalName`, `entitySetName`, `select`, `filters`, `orderBy`, `top`, `expand`) plus optional `--repo-root` / `--output`. Emits a Web API OData path, FetchXML, Power Automate "List rows" parameters, and warnings about missing filters, row limits, select lists, or entity-set names. No live call.
 - `upsert_data.py` — live row write. Key flags: `--table` (logical name, required), `--data` (JSON object or path, required), `--mode {create,update,upsert}` (default `upsert`), `--id` (primary-key GUID for update/upsert), `--key` (JSON object or path with alternate-key values), `--verify` (retrieve the changed columns after the write), plus the shared auth flags (`--environment-url`/`--target-url`, `--username`, `--tenant-id`, `--auth-dialog`, `--auto-validate`, `--auth-flow {auto,devicecode,interactive}`, `--force-prompt`, `--verbose`) and `--repo-root` (resolves project-profile deployment defaults, including typed row-write coercion).
+- `read_data.py` — live, **read-only** row read (no preflight). `--mode retrieve` reads one row by `--id` or `--key` (optional `--columns` / `--all-columns`); `--mode list` runs a query from `--fetchxml` or `--spec` (built with the offline designer) with `--max-rows` (default 100), `--page-size`, and `--exact-total`. The response reports `returnedCount`, `moreRecords`, and `totalRecordCount` (Dataverse caps that count at 5000; `totalRecordCountLimitExceeded` flags when the true total is higher). Shares the same auth flags as `upsert_data.py`.
+- `delete_data.py` — live row **delete** by `--id` or `--key` (`--table` required). Mutating and irreversible: run the live-mutation preflight and get explicit approval first; prefer `--auth-dialog` to confirm the target. Shares the same auth flags.
 
 If the repo already has a proven seed-data or data-sync mechanism, or server-side SDK code, prefer that repo-owned path over reconstructing one. The Web API is the simpler direct/scriptable path when no SDK code exists.
 
@@ -49,9 +56,9 @@ If the repo already has a proven seed-data or data-sync mechanism, or server-sid
 
 ## Key safety and decision rules
 
-- **Run the live-mutation preflight defined in the `powerplatform-core` orchestrator before any live row write.** Stop if any required field is missing.
+- **Run the live-mutation preflight defined in the `powerplatform-core` orchestrator before any live row write or delete.** Reads (`read_data.py`) are non-mutating and skip the preflight. Stop if any required field is missing.
 - Prefer the auth dialog (`--auth-dialog`) so the user confirms the target URL and selects the working solution; warn when the requested target does not match the active PAC profile. Treat `DEV` as the working environment and `TEST` as validation. Do not touch production.
-- **Capability boundary:** `upsert_data.py` performs live row writes and optional post-write verification — it does **not** have a generic dry-run/plan mode. When a dry-run is required, keep that phase in the workflow or repo-specific tooling layer; do not imply the shared helper already supports it.
+- **Capability boundary:** `upsert_data.py` performs live row writes and optional post-write verification; `read_data.py` reads (retrieve/list) and is non-mutating; `delete_data.py` deletes a single row. None of them have a generic dry-run/plan mode, and `read_data.py` list returns at most `--max-rows` rows per call (default 100) with a `moreRecords` flag rather than streaming an entire table. When a dry-run is required, keep that phase in the workflow or repo-specific tooling layer; do not imply the shared helpers already support it.
 - Do not delete business data unless the user explicitly asked for deletion and separately approved it. Prefer safe create, keyed update, or upsert over any delete path.
 - Separate solution customization from configuration rows. A solution import is not the default way to sync environment-specific config data.
 - If no write executed because a required key or environment value was missing, say so explicitly. When a write is performed, report the table targeted, whether it created/updated/upserted, the key or alternate key used, which columns changed, and what safety checks were applied.
