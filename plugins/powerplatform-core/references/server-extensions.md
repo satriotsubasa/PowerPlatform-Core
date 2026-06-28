@@ -45,8 +45,9 @@ Reusable helper:
 - official Microsoft guidance still centers first registration flows around Plug-in Registration Tool
 - `pac plugin push` is strong for repeatable import or update flows when the target package or assembly is already known
 - fully headless registration is still technically possible through Dataverse tables such as `pluginassembly`, `plugintype`, `sdkmessageprocessingstep`, and `sdkmessageprocessingstepimage`
-- this skill now packages an assembly-based headless first-registration helper around those Dataverse tables
-- this skill now also packages a package-based headless first-registration helper around `pluginpackage` plus the related server-managed `pluginassembly` and `plugintype` records
+- the assembly-based helper **creates the `plugintype` records explicitly** from the step type names. The classic database-assembly path does NOT auto-create plug-in types server-side (the Plug-in Registration Tool creates them via reflection), so do not wait for them to appear on their own.
+- re-running the assembly helper with `reuseExistingAssembly` (the `--reuse-existing` flag) reconciles an assembly left behind by a partial run: it creates any missing types and steps and skips steps that already exist, instead of failing on "already exists". It does not re-upload assembly content — use the update/push flow for that.
+- the package-based helper registers `pluginpackage`; Dataverse's server-side package processing auto-creates the `pluginassembly` and `plugintype` records, so it is the more reliable path when reliable type creation matters
 - treat step enablement as explicit deployment state. Do not rely on push or registration flows to preserve enabled or disabled state implicitly.
 - for repeatable update flows, capture step state before push, compare after push, and fail on unexpected drift unless the user explicitly asked for reconcile.
 - if the repo has stable critical or intentionally disabled steps, encode them in the project profile rather than relying on memory.

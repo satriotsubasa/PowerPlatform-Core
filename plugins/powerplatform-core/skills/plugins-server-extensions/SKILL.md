@@ -38,8 +38,8 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 
 | Helper | Purpose |
 | --- | --- |
-| `register_plugin_headless.py` | Assembly-based first registration of a Dataverse plug-in assembly plus its steps and images, via `pluginassembly`, `plugintype`, `sdkmessageprocessingstep`, and `sdkmessageprocessingstepimage`. |
-| `register_plugin_package_headless.py` | Package-based first registration of a Dataverse plug-in package plus steps and images, via `pluginpackage` and the related server-managed `pluginassembly`/`plugintype` records. |
+| `register_plugin_headless.py` | Assembly-based first registration: uploads the `pluginassembly`, **creates the `plugintype` records explicitly** (the classic database path does not auto-create them), then registers `sdkmessageprocessingstep` and `sdkmessageprocessingstepimage` records. `--reuse-existing` reconciles an assembly that already exists (creates missing types/steps) instead of failing. |
+| `register_plugin_package_headless.py` | Package-based first registration via `pluginpackage`. **More reliable default:** Dataverse's server-side package processing auto-creates the `pluginassembly`/`plugintype` records, so type discovery is not the caller's problem. |
 | `push_plugin.py` | Repeatable build-and-push when the target `pluginId` already exists; captures step state before, compares after, and fails on unexpected drift unless reconcile is requested. |
 | `inspect_plugin_steps.py` | Inspect existing step state for an assembly or package — messages, stages, modes, filtering attributes, images, and enabled/disabled state. |
 | `ensure_plugin_step_state.py` | Explicitly enable or disable existing steps so live state matches source intent (`desiredState`). |
@@ -50,7 +50,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 1. **Build.** Restore and build the plug-in solution. Keep trigger/entry-point classes in `*.Plugins` thin, reusable business logic in the business layer, and early-bound types in the generated `*.Data` (generator-owned — do not hand-edit).
 2. **Capture baseline state.** Before any push or re-registration of an existing plug-in, run `inspect_plugin_steps.py` so you have the pre-change step/image picture to compare against.
 3. **Register or push (separate approval gate).**
-   - First registration: `register_plugin_headless.py` (assembly) or `register_plugin_package_headless.py` (package). Official Microsoft guidance still centers first registration on the Plug-in Registration Tool (`pac tool prt`); headless is offered for automation when you confirm the targets.
+   - First registration: prefer **`register_plugin_package_headless.py`** (package) — Dataverse creates the plug-in types server-side, so it is the more reliable path. Use `register_plugin_headless.py` (assembly) for the classic database path; it now creates the `plugintype` records explicitly from the step type names rather than waiting for an auto-discovery that never happens there. If a prior run left an assembly behind, re-run with `--reuse-existing` to reconcile its types and steps instead of dead-ending on "already exists". Official Microsoft guidance still centers first registration on the Plug-in Registration Tool (`pac tool prt`); headless is offered for automation when you confirm the targets.
    - Repeatable update when `pluginId` exists: `push_plugin.py`.
    - Ask before registration or push even if code and build were approved.
 4. **Verify step state.** Re-run `inspect_plugin_steps.py` (or rely on `push_plugin.py`'s post-push check) and confirm critical steps stayed enabled and intentionally disabled steps stayed disabled. Treat unexpected drift as a failure.
@@ -64,6 +64,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 - **Fail on drift by default.** `push_plugin.py` compares step state before and after and fails on unexpected drift unless the user explicitly asks for reconcile.
 - **Runtime assumption.** Dataverse guidance currently requires SDK-style plug-in projects targeting `.NET Framework 4.6.2`; verify current Microsoft docs before changing it.
 - **Packaging.** Prefer the supported plug-in package approach over `ILMerge` when dependent assemblies are needed, and preserve an existing layered/ILRepack delivery model unless the user asks to redesign it.
+- **Plug-in type creation.** The classic database-assembly path does not auto-create `plugintype` records — the assembly registration helper creates them explicitly from the step type names. The package path has Dataverse create them server-side. Prefer the package path when reliable type creation matters, and use `--reuse-existing` to recover an assembly left behind by a partial run (it reconciles types/steps without re-uploading content).
 - **Generated code is generator-owned.** Do not hand-edit `*.Data` early-bound files; change generator settings or regenerate instead.
 - **Preflight gate.** Run the mandatory live-mutation preflight from the `powerplatform-core` orchestrator before any registration, push, or step-state write. Do not restate the full preflight here — invoke it there.
 
