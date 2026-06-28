@@ -26,7 +26,7 @@ internal static partial class Program
         {
             if (args.Length == 0)
             {
-                throw new InvalidOperationException("Expected a command. Supported commands: whoami, row, solution, webresource, customapi, plugin, metadata, flow, securityrole, envvar.");
+                throw new InvalidOperationException("Expected a command. Supported commands: whoami, row, query, solution, webresource, customapi, plugin, metadata, flow, securityrole, envvar.");
             }
 
             var command = args[0].ToLowerInvariant();
@@ -35,6 +35,7 @@ internal static partial class Program
             {
                 "whoami" => RunWhoAmI(ParseOptions(args.Skip(1).ToArray())),
                 "row" => RunRow(ParseOptions(args.Skip(1).ToArray())),
+                "query" => RunQuery(ParseOptions(args.Skip(1).ToArray())),
                 "solution" => RunSolution(ParseOptions(args.Skip(1).ToArray())),
                 "webresource" => RunWebResource(ParseOptions(args.Skip(1).ToArray())),
                 "customapi" => RunCustomApi(ParseOptions(args.Skip(1).ToArray())),
@@ -83,6 +84,21 @@ internal static partial class Program
         using var client = Connect(options);
         var mode = Require(options, "mode").ToLowerInvariant();
         var table = Require(options, "table");
+
+        // retrieve and delete are keyed single-record operations: they take --id or alternate
+        // --key (and, for retrieve, --columns) but no --data payload, so handle them first.
+        if (mode == "retrieve")
+        {
+            Console.WriteLine(JsonSerializer.Serialize(ExecuteRetrieve(client, table, options), JsonOptions));
+            return 0;
+        }
+
+        if (mode == "delete")
+        {
+            Console.WriteLine(JsonSerializer.Serialize(ExecuteDelete(client, table, options), JsonOptions));
+            return 0;
+        }
+
         var dataText = Require(options, "data");
         var data = JsonNode.Parse(dataText)?.AsObject() ?? throw new InvalidOperationException("Expected a JSON object for --data.");
 
@@ -107,7 +123,7 @@ internal static partial class Program
             "create" => ExecuteCreate(client, entity, data, verify),
             "update" => ExecuteUpdate(client, entity, data, verify),
             "upsert" => ExecuteUpsert(client, entity, data, verify),
-            _ => throw new InvalidOperationException($"Unsupported row mode '{mode}'. Use create, update, or upsert."),
+            _ => throw new InvalidOperationException($"Unsupported row mode '{mode}'. Use create, update, upsert, retrieve, or delete."),
         };
 
         Console.WriteLine(JsonSerializer.Serialize(result, JsonOptions));

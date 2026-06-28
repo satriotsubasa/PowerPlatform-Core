@@ -87,8 +87,8 @@ Start with the **orchestrator** — `powerplatform-core` — which discovers rep
 | --- | --- |
 | **`powerplatform-core`** | 🧭 Orchestrator. Discovers repo context, picks the surface, enforces the live-mutation preflight, and routes to the right domain skill. |
 | **`dataverse-schema`** | Tables, columns, lookups, choices, alternate keys, forms, views, the form ribbon (RibbonDiffXml), and table icons — plus up-front schema/query design. |
-| **`data-operations`** | Row create / update / upsert, config-data seeding and sync, and query design across OData, FetchXML, and Power Automate "List rows". |
-| **`power-automate-flows`** | Solution-aware cloud flows: create, update, inspect, lint, connector & hardening review, and HTTP-trigger callback URL resolution. |
+| **`data-operations`** | Row create / read / update / upsert / delete, config-data seeding and sync, and query design **and execution** (FetchXML/OData) with bounded paging and match counts. |
+| **`power-automate-flows`** | Solution-aware cloud flows: create, update, inspect, **run-history read-back**, lint, connector & hardening review, and HTTP-trigger callback URL resolution. |
 | **`plugins-server-extensions`** | C# plug-ins and custom APIs: headless registration, repeatable build-and-push, step inspection, and step-state reconciliation. |
 | **`pcf-and-web-resources`** | PCF controls, web resources, client form scripts, and Power Fx review — scaffold, version, build, deploy, and bind. |
 | **`code-apps`** | Power Apps Code Apps (the pro-code Vite + `@microsoft/power-apps` SPA model): scaffold, add data sources, build, and push. |

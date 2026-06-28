@@ -1,12 +1,12 @@
 # Data Operations
 
-Use this reference for Dataverse business data row creation, update, upsert, and configuration data sync work.
+Use this reference for Dataverse business data row creation, read, update, upsert, delete, and configuration data sync work.
 
 Default safety rule:
 
-- create, update, and upsert are in scope when the user asks
+- create, read, update, and upsert are in scope when the user asks; read is non-mutating and needs no preflight
 - separate solution customization from configuration rows; a solution import is not the default way to sync environment-specific config data
-- do not delete business data unless the user explicitly asks for deletion and separately approves it
+- delete is supported but is the highest-risk write: only delete when the user explicitly asks, after the live-mutation preflight and explicit approval
 - require a dry-run, diff, or workflow-level plan before applying config data to TST/TEST
 
 ## Supported Paths
@@ -19,7 +19,9 @@ Prefer these paths:
 
 Reusable helper:
 
-- use `scripts/upsert_data.py` when the current task is a row-level create, update, or upsert operation that fits the shared helper payload model
+- use `scripts/upsert_data.py` for a row-level create, update, or upsert that fits the shared helper payload model
+- use `scripts/read_data.py` to read a row (`--mode retrieve` by key) or list rows (`--mode list` from a FetchXML/spec query) — read-only, no preflight
+- use `scripts/delete_data.py` to delete a row by primary key or alternate key — live mutation, preflight required
 
 ## Before Writing Data
 
@@ -74,6 +76,25 @@ Use upsert when the user wants create-or-update behavior or when the target row 
 
 When the source identifier comes from another system, do not rely on a bare reused ID by itself unless it is globally unique in the tenant. Prefer a source-system-qualified key such as `source_system + source_id`.
 
+## Read
+
+Reading rows back is non-mutating and skips the live-mutation preflight. Use it to verify a write, debug a value, or answer "what does this row currently hold".
+
+- retrieve a single row by primary key or alternate key with `read_data.py --mode retrieve`; pass `--columns` to limit the payload (default is all columns)
+- list rows for a FetchXML or spec query with `read_data.py --mode list`; it pages up to `--max-rows` (default 100)
+- **counts:** the response reports `returnedCount`, `moreRecords`, and `totalRecordCount`. Dataverse caps that live count at 5000 regardless of page size, so `totalRecordCountLimitExceeded` is the signal that the true total is higher than 5000
+- for an approximate total beyond 5000, `--exact-total` calls `RetrieveTotalRecordCount`, which returns the **unfiltered table total** as a snapshot that can be up to ~24h stale — useful for "how big is this table", not for a filtered count
+- prefer a specific `--columns`/`$select` and a real filter; an unfiltered list reads more rows than intended
+
+## Delete
+
+Delete is the highest-risk row operation: it is live and irreversible.
+
+- only delete when the user explicitly asks, after the orchestrator live-mutation preflight and explicit approval
+- delete by primary key or alternate key with `delete_data.py`; prefer `--auth-dialog` so the target environment is confirmed first
+- prefer deactivation (`statecode`) over deletion when the intent is "make it inactive" rather than "remove it"
+- for bulk deletes, plan first (name the rows to be removed) and never infer a delete set from a broad or ambiguous query
+
 ## Lookup And Choice Handling
 
 - resolve lookups using supported references, not display-name guessing
@@ -97,8 +118,8 @@ That last category matters because it drives whether a deactivation, deletion, o
 
 Important current capability boundary:
 
-- the shared helper `scripts/upsert_data.py` performs live row writes and optional post-write verification
-- it does not currently expose a generic dry-run or plan mode
+- the shared helpers `scripts/upsert_data.py` (write), `scripts/read_data.py` (read), and `scripts/delete_data.py` (delete) cover row-level CRUD; reads are non-mutating, writes and deletes require the preflight
+- none of them expose a generic dry-run or plan mode, and `read_data.py` list returns at most `--max-rows` rows per call with a `moreRecords` flag rather than streaming an entire table
 - when a dry-run is required, keep that phase in the workflow or repo-specific tooling layer instead of implying that the shared helper already supports it
 - do not upsert config data to TST/TEST until the dry-run/diff names created, updated, skipped, and invalid rows
 

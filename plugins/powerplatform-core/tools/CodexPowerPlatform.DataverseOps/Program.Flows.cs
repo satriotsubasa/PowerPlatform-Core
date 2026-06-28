@@ -26,6 +26,21 @@ internal static partial class Program
         "ismanaged",
     };
 
+    private static readonly string[] FlowRunColumns =
+    {
+        "flowrunid",
+        "name",
+        "status",
+        "starttime",
+        "endtime",
+        "duration",
+        "errorcode",
+        "errormessage",
+        "triggertype",
+        "modernflowtype",
+        "isprimary",
+    };
+
     private static int RunFlow(Dictionary<string, string?> options)
     {
         using var client = Connect(options);
@@ -37,9 +52,10 @@ internal static partial class Program
         {
             "list" => RunFlowList(client, options),
             "inspect" => RunFlowInspect(client, options),
+            "runs" => RunFlowRuns(client, options),
             "create" => RunFlowCreate(client, options),
             "update" => RunFlowUpdate(client, options),
-            _ => throw new InvalidOperationException("Unsupported flow mode. Use --mode list, inspect, create, or update."),
+            _ => throw new InvalidOperationException("Unsupported flow mode. Use --mode list, inspect, runs, create, or update."),
         };
     }
 
@@ -195,6 +211,99 @@ internal static partial class Program
             flow = BuildFlowPayload(refreshed, includeClientData: true),
         }, JsonOptions));
         return 0;
+    }
+
+    private static int RunFlowRuns(ServiceClient client, Dictionary<string, string?> options)
+    {
+        var specText = ReadSpecText(options);
+        var spec = JsonSerializer.Deserialize<FlowRunsSpec>(specText, InputJsonOptions)
+            ?? throw new InvalidOperationException("Expected a JSON object for flow runs spec.");
+
+        var flow = ResolveFlow(client, spec.WorkflowId, spec.WorkflowUniqueId, spec.UniqueName, spec.Name, spec.SolutionUniqueName);
+        var maxRuns = spec.MaxRuns is > 0 ? Math.Min(spec.MaxRuns.Value, 200) : 20;
+        var capture = ReadFlowRunCapture(client);
+
+        var query = new QueryExpression("flowrun")
+        {
+            ColumnSet = new ColumnSet(FlowRunColumns),
+            TopCount = maxRuns,
+        };
+        // flowrun.workflow is the lookup to the parent flow (workflow row).
+        query.Criteria.AddCondition("workflow", ConditionOperator.Equal, flow.Id);
+        if (!string.IsNullOrWhiteSpace(spec.Status))
+        {
+            query.Criteria.AddCondition("status", ConditionOperator.Equal, spec.Status);
+        }
+        query.AddOrder("starttime", OrderType.Descending);
+
+        var runs = client.RetrieveMultiple(query).Entities
+            .OrderByDescending(run => run.GetAttributeValue<DateTime?>("starttime") ?? DateTime.MinValue)
+            .Select(BuildFlowRunPayload)
+            .ToList();
+
+        string? note = null;
+        if (runs.Count == 0)
+        {
+            note = capture.Enabled == false
+                ? "No runs found, and cloud flow run-history capture appears disabled in this environment (Organization.FlowRunTimeToLiveInSeconds = 0). Only solution-aware flows are captured; the Power Automate portal is the complete source of run history."
+                : "No runs found in the flowrun table. Dataverse run history covers only solution-aware flows, is retained for a limited window, and is a best-effort mirror - confirm in the Power Automate portal if you expected runs.";
+        }
+
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            success = true,
+            mode = "runs",
+            flow = new
+            {
+                workflowId = flow.Id,
+                name = flow.GetAttributeValue<string>("name"),
+                uniqueName = flow.GetAttributeValue<string>("uniquename"),
+            },
+            runHistoryCaptureEnabled = capture.Enabled,
+            runHistoryRetentionSeconds = capture.RetentionSeconds,
+            count = runs.Count,
+            runs,
+            note,
+        }, JsonOptions));
+        return 0;
+    }
+
+    private static (bool? Enabled, int? RetentionSeconds) ReadFlowRunCapture(ServiceClient client)
+    {
+        try
+        {
+            var org = client.RetrieveMultiple(new QueryExpression("organization")
+            {
+                ColumnSet = new ColumnSet("flowruntimetoliveinseconds"),
+                TopCount = 1,
+            }).Entities.FirstOrDefault();
+            var ttl = org?.GetAttributeValue<int?>("flowruntimetoliveinseconds");
+            return ttl is null ? (null, null) : (ttl.Value > 0, ttl.Value);
+        }
+        catch
+        {
+            return (null, null);
+        }
+    }
+
+    private static object BuildFlowRunPayload(Entity run)
+    {
+        var durationMs = run.GetAttributeValue<long?>("duration");
+        return new
+        {
+            runId = run.GetAttributeValue<string>("name"),
+            flowRunId = run.Id,
+            status = run.GetAttributeValue<string>("status"),
+            startTime = run.GetAttributeValue<DateTime?>("starttime"),
+            endTime = run.GetAttributeValue<DateTime?>("endtime"),
+            durationMs,
+            durationSeconds = durationMs.HasValue ? durationMs.Value / 1000.0 : (double?)null,
+            triggerType = run.GetAttributeValue<string>("triggertype"),
+            errorCode = run.GetAttributeValue<string>("errorcode"),
+            errorMessage = run.GetAttributeValue<string>("errormessage"),
+            modernFlowType = run.GetAttributeValue<OptionSetValue>("modernflowtype")?.Value,
+            isPrimary = run.GetAttributeValue<OptionSetValue>("isprimary")?.Value,
+        };
     }
 
     private static QueryExpression BuildFlowQuery(string? solutionUniqueName)
@@ -518,6 +627,23 @@ internal static partial class Program
         public string? SolutionUniqueName { get; init; }
 
         public bool? IncludeClientData { get; init; }
+    }
+
+    private sealed class FlowRunsSpec
+    {
+        public string? WorkflowId { get; init; }
+
+        public string? WorkflowUniqueId { get; init; }
+
+        public string? UniqueName { get; init; }
+
+        public string? Name { get; init; }
+
+        public string? SolutionUniqueName { get; init; }
+
+        public int? MaxRuns { get; init; }
+
+        public string? Status { get; init; }
     }
 
     private sealed class FlowCreateSpec
