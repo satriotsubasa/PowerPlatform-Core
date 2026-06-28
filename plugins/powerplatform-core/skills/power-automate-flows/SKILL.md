@@ -3,11 +3,12 @@ name: power-automate-flows
 description: >
   Use for solution-aware Power Automate cloud flows in Dataverse - create, update, inspect,
   lint, connector governance review, hardening review (retry/concurrency/pagination/idempotency/
-  error handling), HTTP-trigger callback URL resolution, and the environment variables flows
-  read. Fires whenever the user mentions a cloud flow, Power Automate, a workflow record, flow
-  connection references, a flow trigger URL or webhook callback, "lint my flow", "harden this
-  flow", "review the connectors", or "why did my flow change behavior", even if no helper is
-  named. Patches only the changed `workflow` properties and blocks semantic drift (emptied
+  error handling), HTTP-trigger callback URL resolution, run-history inspection (recent runs,
+  status, errors, duration), and the environment variables flows read. Fires whenever the user
+  mentions a cloud flow, Power Automate, a workflow record, flow connection references, a flow
+  trigger URL or webhook callback, "lint my flow", "harden this flow", "review the connectors",
+  "why did my flow change behavior", "show me the run history", "did the flow run", "why did my
+  flow fail", or "check the recent runs", even if no helper is named. Patches only the changed `workflow` properties and blocks semantic drift (emptied
   branches, dropped switch cases, removed required actions) by default. Not for C# plug-ins or
   custom APIs - use plugins-server-extensions. Run the live-mutation preflight from the
   `powerplatform-core` orchestrator before any create, update, activate, or environment-variable
@@ -21,6 +22,7 @@ This skill handles solution-aware Power Automate cloud flows as first-class Data
 ## When to use this
 
 - The user wants to create, update, or analyze a cloud flow, or asks you to "look at", "fix", "enhance", or "troubleshoot" one.
+- The user wants a flow's **run history** — recent runs, whether the last run succeeded or failed, the error on a failed run, or run durations.
 - The task asks for a lint pass, a connector governance review, or a hardening review (retry policy, concurrency, pagination, idempotency, error handling, maintainability).
 - An HTTP-trigger flow needs its signed callback URL resolved, stored in an environment variable, or smoke-tested.
 - A flow reads an environment variable whose value must be inspected or set for the target environment.
@@ -39,6 +41,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 | Helper | Purpose |
 | --- | --- |
 | `inspect_flow.py` | Inspect one flow or list solution-scoped flows; return identifiers, state, connection-reference summary, and definition summary. |
+| `inspect_flow_runs.py` | **Read-only run history.** List a solution flow's recent runs (status, start/end, duration, error) from the Dataverse `flowrun` table by `--name` / `--workflow-id` / `--unique-name`, with `--max-runs` and an optional `--status` filter. Reports whether run-history capture is enabled so an empty list is not mistaken for "no runs". |
 | `lint_flow.py` | Detect missing connection references, missing triggers/actions, broken `runAfter`, hardcoded GUIDs, and hardcoded Dataverse URLs. Works from live Dataverse or a local `clientData`/`definition`/JSON file. |
 | `review_flow_connectors.py` | Review connector-specific read/write patterns (Dataverse, SharePoint, Outlook action shapes). Same live-or-local sources as the linter. |
 | `review_flow_hardening.py` | Hardening checklist for retry policy, concurrency, pagination, idempotency, error handling, and maintainability. Same live-or-local sources. |
@@ -56,6 +59,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 4. **Change only what must change.** Use `update_flow.py` and patch only the `workflow` properties that need to move (typically `clientData`, plus name/description/owner/state). Prefer `create_flow.py` only for genuinely new flows. Do not recreate a flow to deploy it.
 5. **Resolve and wire HTTP triggers.** For an HTTP-trigger flow: create/update the flow, resolve the signed URL with `get_flow_trigger_url.py`, store it with `set_environment_variable_value.py`, then smoke-test only if the user asked. `apply_requirement_spec.py` can orchestrate this chain.
 6. **Promote through solution ALM.** Keep the flow in the selected unmanaged solution and promote via solution export/import with connection references and environment variables — not by re-authoring per environment.
+7. **Verify and debug with run history.** Use `inspect_flow_runs.py` to confirm the flow actually ran and whether it succeeded or failed (and why), rather than asking for a portal screenshot. Dataverse run history covers only solution-aware flows, needs the capture feature enabled (`Organization.FlowRunTimeToLiveInSeconds > 0`), is retained for a limited window (28 days by default), and is a best-effort mirror — the Power Automate portal is the complete, transactional source.
 
 ## Safety and decision rules
 
@@ -64,6 +68,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 - **Keep environment-specific values out of the definition.** Use connection references and environment variables; do not hardcode URLs or GUIDs into the flow definition.
 - **Do not delete flows** unless the user explicitly requests it. Ask before any publish/import step that affects the environment.
 - **Mind the dual auth surfaces.** Dataverse and the Power Apps admin surface use separate auth stacks, so trigger-URL retrieval can trigger one extra Power Apps sign-in prompt.
+- **Reads skip the preflight.** `inspect_flow.py`, the lint/review helpers, and `inspect_flow_runs.py` are read-only — no live-mutation preflight. But treat Dataverse run history as best-effort, not proof: if a run is missing or you need guaranteed-complete history, the Power Automate portal is the source of truth.
 - **Preflight gate.** Run the mandatory live-mutation preflight from the `powerplatform-core` orchestrator before any create, update, activate, or environment-variable write. Do not restate the full preflight here — invoke it there.
 
 ## References

@@ -19,6 +19,15 @@ Use this reference when the task is about Power Automate cloud flows that live i
 - New flows created by code start as draft or off unless they are explicitly activated afterward.
 - Connection references and environment variables belong in the same solution strategy as the flow.
 
+## Run History (read-back)
+
+Cloud flow run history is read back from Dataverse, not from the unsupported `api.flow.microsoft.com` endpoint:
+
+- Modern cloud-flow runs are projected into the **`flowrun`** elastic table (status, start/end, duration in ms, error code/message, trigger type), linked to the parent flow via the `workflow` lookup. `scripts/inspect_flow_runs.py` reads it with the same Dataverse token.
+- This is the **officially supported** programmatic path: Microsoft documents `api.flow.microsoft.com` as unsupported and steers to the Dataverse Web API. (That endpoint would also need a separate `service.flow.microsoft.com` token — out of scope here.)
+- **Conditions that make `flowrun` empty even when runs happened:** the capture feature must be enabled (`Organization.FlowRunTimeToLiveInSeconds > 0`, often off by default), only **solution-aware** flows are captured (personal "My Flows" are not), the owner needs read access to `flowrun`, and retention defaults to 28 days.
+- The stream is **best-effort, not lossless** — the Power Automate portal run-history page is the transactional, complete source. Treat `flowrun` as a fast read-back for verify/debug, not as proof of completeness.
+
 ## Preferred Execution Path
 
 1. Inspect the existing flow first with `scripts/inspect_flow.py` when the user asks to analyze, troubleshoot, or enhance a flow.
@@ -39,6 +48,10 @@ Use this reference when the task is about Power Automate cloud flows that live i
 - `scripts/inspect_flow.py`
   - Inspect one flow or list solution-scoped flows.
   - Return identifiers, state, connection-reference summary, and definition summary.
+- `scripts/inspect_flow_runs.py`
+  - Read-only: list a solution flow's recent runs (status, start/end, duration, error code/message) from the Dataverse `flowrun` elastic table, most recent first.
+  - Identify the flow by `--name`, `--workflow-id`, `--unique-name`, or `--workflow-unique-id`; bound with `--max-runs`; filter with `--status`.
+  - Reports `runHistoryCaptureEnabled` (from `Organization.FlowRunTimeToLiveInSeconds`) so an empty list is not mistaken for "no runs".
 - `scripts/lint_flow.py`
   - Detect missing connection references, missing triggers or actions, broken `runAfter`, hardcoded GUIDs, and hardcoded Dataverse URLs.
   - It can lint from live Dataverse or from a local `clientData`, `definition`, or JSON file.
@@ -205,3 +218,4 @@ For the common code-first delivery pattern:
 - Ask before publish or import steps that affect the environment.
 - Keep connection references and environment variables explicit rather than hardcoding environment-specific values in the definition.
 - The Dataverse and Power Apps admin surfaces still use separate auth stacks. One extra Power Apps login prompt can still be expected for trigger-URL retrieval until those surfaces are unified.
+- Run-history read-back (`scripts/inspect_flow_runs.py`) is read-only and needs no preflight, but is best-effort and solution-flow-only — confirm in the Power Automate portal when completeness matters.
