@@ -26,7 +26,7 @@ It is deliberately generic. It works across unfamiliar repos — layered code-ce
 
 ## Highlights
 
-- 🧭 **11 modular skills that trigger precisely** — an orchestrator routes each task (schema, data, flows, plug-ins, PCF, code apps, ALM, security, docs, connectors) to exactly the right specialist.
+- 🧭 **12 modular skills that trigger precisely** — an orchestrator routes each task (schema, data, flows, plug-ins, PCF, code apps, ALM, security, docs, connectors, admin) to exactly the right specialist.
 - 🛡️ **Safe by default** — every live mutation passes a preflight gate; stale artifacts are blocked; targeted delivery is preferred over whole-solution imports.
 - ⌨️ **Headless / code-first** — repo edits, SDK/Web API, solution files, and the `pac` CLI come first; browser automation is an opt-in last resort.
 - 🤝 **Multi-agent** — one shared source installs as both a **Claude Code** plugin and an **OpenAI Codex** plugin.
@@ -96,6 +96,7 @@ Start with the **orchestrator** — `powerplatform-core` — which discovers rep
 | **`security-roles`** | Inspect, create, and update Dataverse security roles and privilege sets as reviewable, solution-aware desired state. |
 | **`document-generation`** | Word Template document generation: inventory content controls, map placeholders, and plan template-aware changes. |
 | **`custom-connectors`** | Design custom connectors and integration wrappers — auth shape, operation inventory, and direct-connector vs. Azure-facade recommendation. |
+| **`platform-administration`** | Power Platform tenant/environment administration via `pac admin` + the Power Platform API: list/inspect environments, tenant settings, DLP policies, and environment groups (read-only today), with an admin-grade preflight gating writes. |
 
 ## Quickstart
 
@@ -129,7 +130,7 @@ The thing that makes this plugin different from "an agent with `pac` access" is 
 
 PowerPlatform-Core is packaged as a plugin of modular skills over a shared toolchain:
 
-- **An orchestrator + 10 domain skills** under `skills/`, each with a focused, precisely triggering description.
+- **An orchestrator + 11 domain skills** under `skills/`, each with a focused, precisely triggering description.
 - **A shared toolchain at the plugin root**, resolved via `$CLAUDE_PLUGIN_ROOT` / `$CODEX_PLUGIN_ROOT`:
   - **`scripts/`** — Python helper entry points that drive every live operation.
   - **`tools/`** — a .NET 8 `DataverseOps` execution tool (connection checks, row/metadata ops, flows, plug-ins, web resources, solutions) plus a Windows auth dialog.

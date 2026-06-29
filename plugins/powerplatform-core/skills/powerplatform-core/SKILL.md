@@ -7,7 +7,7 @@ description: >
   when the request spans multiple areas, is ambiguous, or the repo shape is unknown, then DEFER
   to the matching domain skill for focused single-domain work (schema, data, flows, plug-ins,
   PCF/web resources, code apps, solution ALM, security roles, document generation, custom
-  connectors). Trigger when the user mentions Power Platform, Dataverse, Dynamics 365, Power
+  connectors, platform administration). Trigger when the user mentions Power Platform, Dataverse, Dynamics 365, Power
   Apps, Power Automate, model-driven apps, solutions, or the pac CLI without naming a specific
   asset - but let the domain skills lead on their specifics.
 ---
@@ -58,6 +58,7 @@ Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unle
 | Security roles and privilege sets | `security-roles` |
 | Word Templates and document generation | `document-generation` |
 | Custom connectors and integration wrappers | `custom-connectors` |
+| Power Platform tenant/environment administration (admin center): environments, tenant settings, DLP, managed environments, environment groups, capacity | `platform-administration` |
 
 When a repo matches a documented overlay's conventions, suggest the specialized overlay skill if one is installed.
 

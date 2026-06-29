@@ -3,3 +3,6 @@ obj/
 __pycache__/
 *.pyc
 out/
+
+# Local-only marketing drafts (not committed)
+/marketing/
