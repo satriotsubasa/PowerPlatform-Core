@@ -274,6 +274,7 @@ class PluginStepStateScriptTests(unittest.TestCase):
                         "--environment-url",
                         "https://contoso.crm.dynamics.com",
                         "--verify-step-state",
+                        "--no-preflight",
                     ],
                 ):
                     with self.assertRaises(RuntimeError) as raised:
@@ -346,6 +347,7 @@ class PluginStepStateScriptTests(unittest.TestCase):
                         str(plugin_file),
                         "--environment-url",
                         "https://contoso.crm.dynamics.com",
+                        "--no-preflight",
                     ],
                 ):
                     with redirect_stdout(io.StringIO()):
@@ -407,6 +409,7 @@ class PluginStepStateScriptTests(unittest.TestCase):
                         "https://contoso.crm.dynamics.com",
                         "--skip-step-state-verification",
                         "--skip-step-state-reconcile",
+                        "--no-preflight",
                     ],
                 ):
                     with redirect_stdout(io.StringIO()):

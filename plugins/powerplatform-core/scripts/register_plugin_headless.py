@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from powerplatform_common import (
+    enforce_preflight,
     apply_selected_solution_to_spec,
     apply_plugin_step_state_defaults_to_registration_spec,
     infer_plugin_assembly_file,
@@ -48,7 +49,11 @@ def main() -> int:
     )
     parser.add_argument("--force-prompt", action="store_true", help="Force an interactive auth prompt instead of using a cached MSAL token.")
     parser.add_argument("--verbose", action="store_true", help="Print Dataverse SDK auth diagnostics to stderr.")
+    parser.add_argument("--preflight-token", help="Live-mutation preflight token from validate_delivery.py.")
+    parser.add_argument("--no-preflight", action="store_true", help="Bypass the mandatory live-mutation preflight gate (logged loudly).")
     args = parser.parse_args()
+
+    enforce_preflight(provided_token=args.preflight_token, allow_no_preflight=args.no_preflight)
 
     spec = read_json_argument(args.spec)
     if not isinstance(spec, dict):

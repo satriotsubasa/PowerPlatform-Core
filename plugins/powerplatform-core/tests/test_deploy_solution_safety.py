@@ -125,6 +125,7 @@ class DeploySolutionSafetyTests(unittest.TestCase):
                 str(Path.cwd()),
                 "--change-scope",
                 "targeted-component",
+                "--no-preflight",
             ],
         ):
             with self.assertRaises(RuntimeError):
@@ -175,6 +176,7 @@ class DeploySolutionSafetyTests(unittest.TestCase):
                     "--change-scope",
                     "targeted-component",
                     "--allow-broad-import",
+                    "--no-preflight",
                 ],
             ):
                 exit_code = deploy_solution.main()

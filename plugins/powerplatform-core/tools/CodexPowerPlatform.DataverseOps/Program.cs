@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Crm.Sdk.Messages;
@@ -385,21 +386,36 @@ internal static partial class Program
             Log(verbose, $"Parent window handle: 0x{parentWindowHandle.Value.ToInt64():X}");
         }
 
-        if (authFlow is not ("auto" or "interactive" or "devicecode"))
+        if (authFlow is not ("auto" or "interactive" or "devicecode" or "clientsecret" or "certificate"))
         {
-            throw new InvalidOperationException("Supported auth flows are auto, interactive, and devicecode.");
+            throw new InvalidOperationException("Supported auth flows are auto, interactive, devicecode, clientsecret, and certificate.");
         }
 
-        var publicClient = BuildPublicClientApplication(appId, redirectUri, tenantId);
-        Log(verbose, $"Acquiring preflight token with MSAL {authFlow} flow.");
-        _ = AcquireAccessTokenAsync(publicClient, environmentUrl, username, authFlow, forcePrompt, verbose, parentWindowHandle).GetAwaiter().GetResult();
-        Log(verbose, "Preflight token acquired. Creating ServiceClient with external token provider.");
+        Func<string, Task<string>> tokenProvider;
+        if (authFlow is "clientsecret" or "certificate")
+        {
+            // Service-principal (app-only) auth for unattended/CI use. Secrets are read from
+            // environment variables, never from CLI arguments.
+            var confidentialClient = BuildConfidentialClientApplication(appId, tenantId, authFlow, options);
+            Log(verbose, $"Acquiring app-only token with MSAL {authFlow} (service-principal) flow.");
+            _ = AcquireAppTokenAsync(confidentialClient, environmentUrl, verbose).GetAwaiter().GetResult();
+            tokenProvider = instanceUri => AcquireAppTokenAsync(confidentialClient, instanceUri, verbose);
+        }
+        else
+        {
+            var publicClient = BuildPublicClientApplication(appId, redirectUri, tenantId);
+            Log(verbose, $"Acquiring preflight token with MSAL {authFlow} flow.");
+            _ = AcquireAccessTokenAsync(publicClient, environmentUrl, username, authFlow, forcePrompt, verbose, parentWindowHandle).GetAwaiter().GetResult();
+            tokenProvider = instanceUri => AcquireAccessTokenAsync(publicClient, instanceUri, username, authFlow, forcePrompt: false, verbose, parentWindowHandle);
+        }
+
+        Log(verbose, "Token acquired. Creating ServiceClient with external token provider.");
         var client = new ServiceClient(
             new Uri(environmentUrl),
             instanceUri =>
             {
                 Log(verbose, $"ServiceClient requested token for {instanceUri}");
-                return AcquireAccessTokenAsync(publicClient, instanceUri, username, authFlow, forcePrompt: false, verbose, parentWindowHandle);
+                return tokenProvider(instanceUri);
             },
             useUniqueInstance: true,
             logger: null);
@@ -451,6 +467,66 @@ internal static partial class Program
         }
 
         return app;
+    }
+
+    private static IConfidentialClientApplication BuildConfidentialClientApplication(
+        string appId,
+        string tenantId,
+        string authFlow,
+        Dictionary<string, string?> options)
+    {
+        if (string.IsNullOrWhiteSpace(tenantId) || string.Equals(tenantId, "organizations", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Service-principal auth (clientsecret/certificate) requires an explicit --tenant-id.");
+        }
+
+        var builder = ConfidentialClientApplicationBuilder
+            .Create(appId)
+            .WithAuthority(AzureCloudInstance.AzurePublic, tenantId);
+
+        if (authFlow == "clientsecret")
+        {
+            var secret = Environment.GetEnvironmentVariable("DATAVERSE_CLIENT_SECRET");
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                throw new InvalidOperationException(
+                    "clientsecret auth requires the client secret in the DATAVERSE_CLIENT_SECRET environment variable "
+                    + "(secrets must never be passed as CLI arguments).");
+            }
+
+            builder = builder.WithClientSecret(secret);
+        }
+        else
+        {
+            var certPath = options.TryGetValue("certificate-path", out var rawCertPath) && !string.IsNullOrWhiteSpace(rawCertPath)
+                ? rawCertPath!
+                : throw new InvalidOperationException("certificate auth requires --certificate-path.");
+            if (!File.Exists(certPath))
+            {
+                throw new InvalidOperationException($"Certificate file not found: {certPath}");
+            }
+
+            var certPassword = Environment.GetEnvironmentVariable("DATAVERSE_CERTIFICATE_PASSWORD");
+            var certificate = new X509Certificate2(certPath, certPassword);
+            builder = builder.WithCertificate(certificate);
+        }
+
+        return builder.Build();
+    }
+
+    private static async Task<string> AcquireAppTokenAsync(
+        IConfidentialClientApplication confidentialClient,
+        string instanceUri,
+        bool verbose)
+    {
+        var resource = NormalizeResourceUri(instanceUri);
+        var scope = $"{resource}/.default";
+        Log(verbose, $"Requesting app-only token for scope {scope}");
+        var result = await confidentialClient
+            .AcquireTokenForClient(new[] { scope })
+            .ExecuteAsync()
+            .ConfigureAwait(false);
+        return result.AccessToken;
     }
 
     private static async Task<string> AcquireAccessTokenAsync(

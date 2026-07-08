@@ -176,6 +176,7 @@ class UpdateFlowGuardTests(unittest.TestCase):
                     ),
                     "--repo-root",
                     str(Path.cwd()),
+                    "--no-preflight",
                 ],
             ):
                 with self.assertRaises(RuntimeError):
@@ -242,6 +243,7 @@ class UpdateFlowGuardTests(unittest.TestCase):
                     "--repo-root",
                     str(Path.cwd()),
                     "--allow-semantic-drift",
+                    "--no-preflight",
                 ],
             ):
                 with redirect_stdout(io.StringIO()):

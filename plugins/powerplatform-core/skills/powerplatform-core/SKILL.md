@@ -44,6 +44,15 @@ Required fields: target environment URL; active PAC profile and mismatch warning
 
 Do not import a ZIP from `bin`, `Release`, `Downloads`, or old temp folders unless it was generated in the current session or explicitly selected by the user. If multiple package candidates exist, stop and ask. Never silently escalate from a targeted helper to a whole-solution import.
 
+## Dataverse MCP interop (optional companion)
+
+Microsoft's **Dataverse MCP server** (hosted at `https://{org}.crm.dynamics.com/api/mcp`) is complementary, not competing: it lets an agent *talk to your data* conversationally; this plugin lets an agent *ship your solution*. When both are connected, route by intent instead of defaulting to either.
+
+- **Prefer the Dataverse MCP** for interactive natural-language exploration where the user is asking, not shipping: ad-hoc "what rows look like this", schema questions (`describe`), and small read-only lookups (`search`, `search_data`, `read_query`). It has no repo context and no delivery safety, but it is the lowest-friction way to answer a data question in the moment.
+- **Prefer this plugin's helpers** for anything **paged, keyed, verified, solution-aware, or mutating**: bounded paging with total counts (`read_data.py --mode list`), keyed retrieve/create/update/upsert/delete (`read_data.py`/`upsert_data.py`/`delete_data.py`), solution-scoped writes, flow/plug-in registration, deploys, and every path that must pass the live-mutation preflight. The MCP has no preflight gate, so never route a live mutation through it when a delivery contract matters.
+- **Degrade gracefully around known MCP limits.** `read_query` returns a small capped page (community reports ~20 rows) and supports only a SQL subset — when a result is truncated or a query is rejected, fall back to `read_data.py`/`design_dataverse_query.py` (FetchXML with explicit paging and a `totalRecordCount`) rather than trusting a partial MCP result.
+- **The MCP is optional.** If it is not connected, everything still works through the plugin helpers; do not tell the user they must install it. See `docs/comparison-dataverse-mcp.md` for the full trade-off analysis, and the README for the recommended "run both" setup (`claude mcp add`).
+
 ## Route to the right domain skill
 
 | The task is about… | Open skill |

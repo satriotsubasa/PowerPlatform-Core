@@ -13,6 +13,7 @@ from pathlib import Path
 from power_automate_common import compare_flow_semantics, parse_client_data, prepare_flow_spec, select_flow_guard
 from powerplatform_common import (
     apply_selected_solution_to_spec,
+    enforce_preflight,
     load_flow_guard_contract,
     read_json_argument,
     repo_root,
@@ -46,7 +47,11 @@ def main() -> int:
     )
     parser.add_argument("--force-prompt", action="store_true", help="Force an interactive auth prompt instead of using a cached MSAL token.")
     parser.add_argument("--verbose", action="store_true", help="Print Dataverse SDK auth diagnostics to stderr.")
+    parser.add_argument("--preflight-token", help="Live-mutation preflight token from validate_delivery.py.")
+    parser.add_argument("--no-preflight", action="store_true", help="Bypass the mandatory live-mutation preflight gate (logged loudly).")
     args = parser.parse_args()
+
+    enforce_preflight(provided_token=args.preflight_token, allow_no_preflight=args.no_preflight)
 
     spec = read_json_argument(args.spec)
     if not isinstance(spec, dict):

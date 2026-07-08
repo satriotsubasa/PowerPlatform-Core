@@ -34,6 +34,8 @@ def read_args(**overrides: object) -> argparse.Namespace:
         page_size=None,
         exact_total=False,
         auth_flow="auto",
+        app_id=None,
+        certificate_path=None,
         force_prompt=False,
         verbose=False,
     )
@@ -85,6 +87,21 @@ class ReadDataTests(unittest.TestCase):
         raw = '<fetch><entity name="contact"><attribute name="fullname" /></entity></fetch>'
         self.assertEqual(read_data.resolve_fetchxml(read_args(mode="list", fetchxml=raw)), raw)
 
+    def test_service_principal_uses_app_id_and_no_username(self) -> None:
+        args = read_args(
+            mode="retrieve",
+            table="dhx_invoice",
+            id="11111111-1111-1111-1111-111111111111",
+            auth_flow="clientsecret",
+            app_id="app-guid",
+        )
+        command = read_data.build_retrieve_command(args, FAKE_CONNECTION)
+        self.assertIn("--auth-flow", command)
+        self.assertIn("clientsecret", command)
+        self.assertIn("--app-id", command)
+        self.assertIn("app-guid", command)
+        self.assertNotIn("--username", command)
+
 
 class DeleteDataTests(unittest.TestCase):
     def test_delete_by_id_builds_row_delete_command(self) -> None:
@@ -103,6 +120,14 @@ class DeleteDataTests(unittest.TestCase):
     def test_delete_requires_id_or_key(self) -> None:
         with self.assertRaises(SystemExit):
             delete_data.build_delete_command(read_args(table="dhx_invoice"), FAKE_CONNECTION)
+
+    def test_delete_service_principal_uses_app_id(self) -> None:
+        args = read_args(table="dhx_invoice", id="22222222-2222-2222-2222-222222222222", auth_flow="certificate", app_id="app-guid", certificate_path="/tmp/c.pfx")
+        command = delete_data.build_delete_command(args, FAKE_CONNECTION)
+        self.assertIn("--app-id", command)
+        self.assertIn("--certificate-path", command)
+        self.assertIn("/tmp/c.pfx", command)
+        self.assertNotIn("--username", command)
 
 
 if __name__ == "__main__":

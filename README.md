@@ -9,6 +9,10 @@
 </p>
 
 <p align="center">
+  <em>The Dataverse MCP lets agents talk to your data. PowerPlatform-Core lets agents ship your solution.</em>
+</p>
+
+<p align="center">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/License-Apache--2.0-blue.svg"></a>
   <a href="#install"><img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg"></a>
   <a href="#install"><img alt="OpenAI Codex" src="https://img.shields.io/badge/OpenAI%20Codex-plugin-412991.svg"></a>
@@ -24,7 +28,20 @@ Power Platform changes are easy to make and hard to make *safely* — a single s
 
 It is deliberately generic. It works across unfamiliar repos — layered code-centric, unpacked-solution, mixed, or near-empty — without assuming any one team's house convention, publisher prefix, or folder layout.
 
-> **How does this relate to Microsoft's hosted Dataverse MCP server?** They do different jobs: the MCP lets agents *talk to your data*; this plugin lets agents *ship your solution* — and they work well together. See [docs/comparison-dataverse-mcp.md](docs/comparison-dataverse-mcp.md).
+### Better together with the Dataverse MCP
+
+Microsoft's hosted **Dataverse MCP server** and this plugin do different jobs and complement each other, so **run both**:
+
+- The **Dataverse MCP** is the lowest-friction way for an agent to *talk to your data* — conversational search, `describe`, and small read-only lookups.
+- **PowerPlatform-Core** is how an agent *ships your solution* — repo-aware edits, paged/keyed/verified reads, flows, plug-ins, and every mutation behind a **preflight gate** the MCP has no equivalent for.
+
+When both are connected, the orchestrator skill routes by intent automatically (MCP for interactive exploration; plugin helpers for anything paged, keyed, verified, solution-aware, or mutating). Register the MCP alongside the plugin in Claude Code:
+
+```text
+claude mcp add --transport http dataverse https://{your-org}.crm.dynamics.com/api/mcp
+```
+
+The plugin works fully on its own if you don't add the MCP. See [docs/comparison-dataverse-mcp.md](docs/comparison-dataverse-mcp.md) for the full trade-off analysis.
 
 ## Highlights
 
@@ -78,6 +95,17 @@ The skills are code-first, so the live path needs a small local toolchain:
 | **Microsoft Power Platform CLI (`pac`)** | Authentication, solution, and deployment operations. |
 
 Interactive sign-in is platform-aware: on **Windows** it uses the WAM broker; on **macOS/Linux** it falls back to the **device-code flow** (the tool prints a code to complete in a browser).
+
+**One-command prerequisite check.** From a clone, run the bootstrap script to verify (and optionally install) the toolchain above:
+
+```powershell
+./bootstrap.ps1            # Windows: check; add -Install to install what's missing
+```
+```bash
+./bootstrap.sh             # macOS/Linux: check; add --install to install what's missing
+```
+
+It reports a PASS/FAIL line per tool. With the install flag it installs what it safely can — `pac` as a .NET global tool, and the rest via `winget` (Windows) or Homebrew/apt (macOS/Linux).
 
 > **Migrating from the classic skill?** The old `~/.codex/skills/powerplatform-core` copy-install is deprecated; the plugin replaces it. Once the plugin loads in Codex, delete that folder to avoid a duplicate `powerplatform-core` skill.
 

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -13,6 +14,7 @@ import tempfile
 import time
 from urllib.parse import urlsplit, urlunsplit
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
@@ -922,6 +924,153 @@ def launch_auth_dialog(
     return payload
 
 
+def preflight_token_path() -> Path:
+    return Path(tempfile.gettempdir()) / "ppcore-preflight-token.json"
+
+
+def write_preflight_token(spec: dict[str, Any], *, ttl_seconds: int = 900) -> dict[str, Any]:
+    """Record a short-lived live-mutation preflight token after a successful preflight.
+
+    Mutating helpers gate on this token (see enforce_preflight): the token proves a preflight
+    ran recently. It is intentionally simple - a hash bound to the spec and an expiry, written
+    to a well-known temp path - not a security boundary against a malicious local caller, but a
+    hard technical gate so a harness that skips the preflight cannot silently mutate.
+    """
+    canonical = json.dumps(spec, sort_keys=True, ensure_ascii=False)
+    spec_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=max(1, ttl_seconds))
+    token = hashlib.sha256(f"{spec_hash}:{expires_at.isoformat()}".encode("utf-8")).hexdigest()
+    payload = {"token": token, "specHash": spec_hash, "expiresAt": expires_at.isoformat()}
+    preflight_token_path().write_text(json.dumps(payload), encoding="utf-8")
+    return payload
+
+
+def load_preflight_token() -> dict[str, Any] | None:
+    path = preflight_token_path()
+    if not path.exists():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    expires_at = payload.get("expiresAt")
+    try:
+        if expires_at and datetime.fromisoformat(expires_at) < datetime.now(timezone.utc):
+            return None
+    except (TypeError, ValueError):
+        return None
+    return payload
+
+
+def enforce_preflight(*, provided_token: str | None = None, allow_no_preflight: bool = False) -> None:
+    """Gate a live mutation on a valid preflight token. Raise SystemExit if not satisfied.
+
+    Pass allow_no_preflight=True (the helper's --no-preflight escape hatch) to bypass with a
+    loud warning.
+    """
+    if allow_no_preflight:
+        print(
+            "WARNING: --no-preflight set - skipping the mandatory live-mutation preflight gate. "
+            "This bypasses a safety control; make sure it is intentional.",
+            file=sys.stderr,
+        )
+        return
+    token = load_preflight_token()
+    if token is None:
+        raise SystemExit(
+            "ERROR: no valid live-mutation preflight token found. Run "
+            "`validate_delivery.py --preflight-spec <spec>` to record one first, then re-run this "
+            "helper (or pass --no-preflight to override, which is logged loudly)."
+        )
+    if provided_token and provided_token != token.get("token"):
+        raise SystemExit(
+            "ERROR: the supplied --preflight-token does not match the recorded preflight token. "
+            "Re-run the preflight and use the token it returns."
+        )
+
+
+def resolve_service_principal_connection(
+    *,
+    environment_url: str | None,
+    tenant_id: str | None,
+    auth_flow: str,
+    app_id: str | None,
+    certificate_path: str | None,
+) -> dict[str, Any]:
+    """Resolve an unattended (app-only) connection for clientsecret/certificate auth.
+
+    Service principals have no interactive user, so this skips PAC-profile username defaulting
+    and the auth dialog. Secrets are never handled here - the .NET tool reads them from
+    DATAVERSE_CLIENT_SECRET / DATAVERSE_CERTIFICATE_PASSWORD environment variables.
+    """
+    if not app_id:
+        raise RuntimeError("Service-principal auth (--auth-flow clientsecret/certificate) requires --app-id.")
+    resolved_tenant = tenant_id or active_pac_profile().get("tenant_id")
+    if not resolved_tenant:
+        raise RuntimeError("Service-principal auth requires --tenant-id.")
+    if auth_flow == "certificate" and not certificate_path:
+        raise RuntimeError("certificate auth requires --certificate-path.")
+    return {
+        "environment_url": resolve_environment_url(environment_url),
+        "username": None,
+        "tenant_id": resolved_tenant,
+        "app_id": app_id,
+        "auth_flow": auth_flow,
+        "certificate_path": certificate_path,
+        "solution_id": None,
+        "solution_unique_name": None,
+        "solution_friendly_name": None,
+        "solution_version": None,
+        "solution_is_managed": None,
+        "solution_is_patch": None,
+        "solution_parent_id": None,
+        "solution_parent_unique_name": None,
+        "auth_payload": None,
+    }
+
+
+def append_tool_connection_args(
+    command: list[str],
+    connection: dict[str, Any],
+    *,
+    auth_flow: str,
+    app_id: str | None = None,
+    certificate_path: str | None = None,
+    force_prompt: bool = False,
+    verbose: bool = False,
+) -> list[str]:
+    """Append DataverseOps connection/auth args, handling interactive vs service-principal.
+
+    Centralizes the auth-arg shape so helpers do not each re-implement it: interactive/device-code
+    flows pass --username; clientsecret/certificate flows pass --app-id (+ --certificate-path) and
+    never a username.
+    """
+    command.extend(["--environment-url", connection["environment_url"]])
+    normalized = str(auth_flow or "auto").strip().lower()
+    if normalized in {"clientsecret", "certificate"}:
+        command.extend(["--auth-flow", normalized])
+        resolved_app_id = app_id or connection.get("app_id")
+        if not resolved_app_id:
+            raise RuntimeError("Service-principal auth requires an application (client) ID.")
+        command.extend(["--app-id", resolved_app_id])
+        if connection.get("tenant_id"):
+            command.extend(["--tenant-id", connection["tenant_id"]])
+        cert = certificate_path or connection.get("certificate_path")
+        if normalized == "certificate" and cert:
+            command.extend(["--certificate-path", cert])
+    else:
+        if connection.get("username"):
+            command.extend(["--username", connection["username"]])
+        command.extend(["--auth-flow", normalized])
+        if connection.get("tenant_id"):
+            command.extend(["--tenant-id", connection["tenant_id"]])
+    if force_prompt:
+        command.append("--force-prompt")
+    if verbose:
+        command.append("--verbose")
+    return command
+
+
 def resolve_live_connection(
     *,
     environment_url: str | None = None,
@@ -930,7 +1079,18 @@ def resolve_live_connection(
     auth_dialog: bool = False,
     target_url: str | None = None,
     auto_validate: bool = False,
+    auth_flow: str = "auto",
+    app_id: str | None = None,
+    certificate_path: str | None = None,
 ) -> dict[str, Any]:
+    if str(auth_flow or "").strip().lower() in {"clientsecret", "certificate"}:
+        return resolve_service_principal_connection(
+            environment_url=environment_url,
+            tenant_id=tenant_id,
+            auth_flow=auth_flow.strip().lower(),
+            app_id=app_id,
+            certificate_path=certificate_path,
+        )
     profile = active_pac_profile()
     requested_environment_url = environment_url or target_url
     if warning := build_pac_environment_mismatch_warning(

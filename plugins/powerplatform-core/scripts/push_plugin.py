@@ -11,6 +11,7 @@ from typing import Any
 
 from powerplatform_common import (
     build_plugin_step_state_contract_from_profile,
+    enforce_preflight,
     canonical_plugin_step_mode,
     canonical_plugin_step_stage,
     infer_plugin_assembly_file,
@@ -61,7 +62,11 @@ def main() -> int:
     parser.add_argument("--skip-step-state-reconcile", action="store_true", help="Disable profile-driven step-state reconcile defaults for this run.")
     parser.add_argument("--max-runtime-seconds", type=int, help="Hard local runtime ceiling for the plug-in push command.")
     parser.add_argument("--output", help="Optional JSON output path.")
+    parser.add_argument("--preflight-token", help="Live-mutation preflight token from validate_delivery.py.")
+    parser.add_argument("--no-preflight", action="store_true", help="Bypass the mandatory live-mutation preflight gate (logged loudly).")
     args = parser.parse_args()
+
+    enforce_preflight(provided_token=args.preflight_token, allow_no_preflight=args.no_preflight)
 
     repo = repo_root(Path(args.repo_root))
     deployment_defaults = load_deployment_defaults(repo)
