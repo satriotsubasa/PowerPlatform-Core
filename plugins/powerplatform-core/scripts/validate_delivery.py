@@ -21,6 +21,7 @@ from powerplatform_common import (
     resolve_pcf_context,
     run_command,
     write_json_output,
+    write_preflight_token,
 )
 
 
@@ -128,6 +129,9 @@ def main() -> int:
         preflight = build_live_mutation_preflight(repo=repo, spec=preflight_spec)
         success &= bool(preflight["success"])
         warnings.extend(preflight.get("warnings", []))
+        if preflight["success"]:
+            # Record a short-lived token so the mutating helpers can require that a preflight ran.
+            preflight["preflightToken"] = write_preflight_token(preflight_spec)["token"]
 
     payload = {
         "success": success,

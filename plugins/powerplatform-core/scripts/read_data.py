@@ -17,6 +17,7 @@ from pathlib import Path
 
 from design_dataverse_query import build_query_design
 from powerplatform_common import (
+    append_tool_connection_args,
     read_json_argument,
     resolve_live_connection,
     run_dataverse_tool,
@@ -46,10 +47,12 @@ def main() -> int:
     parser.add_argument("--auto-validate", action="store_true", help="Start the auth dialog validation automatically when the dialog opens.")
     parser.add_argument(
         "--auth-flow",
-        choices=["auto", "devicecode", "interactive"],
+        choices=["auto", "devicecode", "interactive", "clientsecret", "certificate"],
         default="auto",
-        help="Authentication flow for the shared Dataverse SDK tool. 'auto' tries silent first, then device code.",
+        help="Authentication flow. Interactive: auto/devicecode/interactive. Unattended service principal: clientsecret (secret in DATAVERSE_CLIENT_SECRET env var) or certificate (with --certificate-path).",
     )
+    parser.add_argument("--app-id", help="Application (client) ID for service-principal auth (--auth-flow clientsecret/certificate).")
+    parser.add_argument("--certificate-path", help="Certificate (.pfx) path for --auth-flow certificate (password in DATAVERSE_CERTIFICATE_PASSWORD env var).")
     parser.add_argument("--force-prompt", action="store_true", help="Force an interactive auth prompt instead of using a cached MSAL token.")
     parser.add_argument("--verbose", action="store_true", help="Print Dataverse SDK auth diagnostics to stderr.")
     args = parser.parse_args()
@@ -61,6 +64,9 @@ def main() -> int:
         auth_dialog=args.auth_dialog,
         target_url=args.target_url,
         auto_validate=args.auto_validate,
+        auth_flow=args.auth_flow,
+        app_id=args.app_id,
+        certificate_path=args.certificate_path,
     )
 
     command = build_retrieve_command(args, connection) if args.mode == "retrieve" else build_list_command(args, connection)
@@ -71,22 +77,15 @@ def main() -> int:
 
 
 def shared_connection_args(args: argparse.Namespace, connection: dict) -> list[str]:
-    command = [
-        "--environment-url",
-        connection["environment_url"],
-        "--username",
-        connection["username"],
-        "--auth-flow",
-        args.auth_flow,
-    ]
-    tenant_id = connection["tenant_id"]
-    if tenant_id:
-        command.extend(["--tenant-id", tenant_id])
-    if args.force_prompt:
-        command.append("--force-prompt")
-    if args.verbose:
-        command.append("--verbose")
-    return command
+    return append_tool_connection_args(
+        [],
+        connection,
+        auth_flow=args.auth_flow,
+        app_id=args.app_id,
+        certificate_path=args.certificate_path,
+        force_prompt=args.force_prompt,
+        verbose=args.verbose,
+    )
 
 
 def build_retrieve_command(args: argparse.Namespace, connection: dict) -> list[str]:

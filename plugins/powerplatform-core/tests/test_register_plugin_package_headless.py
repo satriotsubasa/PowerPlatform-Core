@@ -53,7 +53,7 @@ class RegisterPluginPackageHeadlessTests(unittest.TestCase):
                  mock.patch.object(
                      sys,
                      "argv",
-                     ["register_plugin_package_headless.py", "--spec", "{}", "--skip-pack"],
+                     ["register_plugin_package_headless.py", "--spec", "{}", "--skip-pack", "--no-preflight"],
                  ):
                 exit_code = registrar.main()
 
@@ -104,7 +104,7 @@ class RegisterPluginPackageHeadlessTests(unittest.TestCase):
                  mock.patch.object(
                      sys,
                      "argv",
-                     ["register_plugin_package_headless.py", "--spec", "{}", "--skip-pack"],
+                     ["register_plugin_package_headless.py", "--spec", "{}", "--skip-pack", "--no-preflight"],
                  ):
                 exit_code = registrar.main()
 

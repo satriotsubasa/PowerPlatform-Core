@@ -6,6 +6,8 @@ Living document. Informed by the [Dataverse MCP comparison](comparison-dataverse
 
 Theme: make the safety story *technically enforced* (not just skill-instructed), add the unattended-auth path nobody else has, and formally embrace the Dataverse MCP as a complementary channel.
 
+> **Status (July 2026):** Phases A–D implemented on `feature/v1.5-trust-interop` and green under `verify_repo.py`. Pending maintainer **live verification** of service-principal auth (Phase A) and preflight-token gating (Phase B) before tag + release.
+
 ### Phase A — Service-principal / client-credentials auth (highest leverage)
 
 Neither this plugin nor the Dataverse MCP documents a non-interactive path today; first mover wins CI/CD, scheduled agents, and headless verification.

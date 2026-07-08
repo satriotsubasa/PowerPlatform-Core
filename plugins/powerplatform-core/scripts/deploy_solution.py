@@ -7,6 +7,7 @@ import argparse
 from pathlib import Path
 
 from powerplatform_common import (
+    enforce_preflight,
     infer_unpacked_solution_folder,
     load_deployment_defaults,
     repo_root,
@@ -59,7 +60,12 @@ def main() -> int:
     parser.add_argument("--skip-pack", action="store_true")
     parser.add_argument("--skip-import", action="store_true")
     parser.add_argument("--output", help="Optional JSON output path.")
+    parser.add_argument("--preflight-token", help="Live-mutation preflight token from validate_delivery.py.")
+    parser.add_argument("--no-preflight", action="store_true", help="Bypass the mandatory live-mutation preflight gate (logged loudly).")
     args = parser.parse_args()
+
+    if not args.skip_import:
+        enforce_preflight(provided_token=args.preflight_token, allow_no_preflight=args.no_preflight)
 
     repo = repo_root(Path(args.repo_root))
     deployment_defaults = load_deployment_defaults(repo)
