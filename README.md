@@ -24,6 +24,8 @@ Power Platform changes are easy to make and hard to make *safely* — a single s
 
 It is deliberately generic. It works across unfamiliar repos — layered code-centric, unpacked-solution, mixed, or near-empty — without assuming any one team's house convention, publisher prefix, or folder layout.
 
+> **How does this relate to Microsoft's hosted Dataverse MCP server?** They do different jobs: the MCP lets agents *talk to your data*; this plugin lets agents *ship your solution* — and they work well together. See [docs/comparison-dataverse-mcp.md](docs/comparison-dataverse-mcp.md).
+
 ## Highlights
 
 - 🧭 **12 modular skills that trigger precisely** — an orchestrator routes each task (schema, data, flows, plug-ins, PCF, code apps, ALM, security, docs, connectors, admin) to exactly the right specialist.
@@ -136,7 +138,7 @@ PowerPlatform-Core is packaged as a plugin of modular skills over a shared toolc
   - **`tools/`** — a .NET 8 `DataverseOps` execution tool (connection checks, row/metadata ops, flows, plug-ins, web resources, solutions) plus a Windows auth dialog.
   - **`references/`** — a knowledge base on surface selection, ALM, metadata, verification, and repo archetypes that the skills cite as needed.
 
-For the full picture, see [`docs/core-overlay-architecture.md`](docs/core-overlay-architecture.md) and the maintainer-oriented [`docs/capability-matrix.md`](docs/capability-matrix.md).
+For the full picture, see [`docs/core-overlay-architecture.md`](docs/core-overlay-architecture.md) and the maintainer-oriented [`docs/capability-matrix.md`](docs/capability-matrix.md). What's next lives in [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Standalone vs. overlay
 
