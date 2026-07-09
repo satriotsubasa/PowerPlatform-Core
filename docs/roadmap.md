@@ -15,10 +15,6 @@ Theme: close the real gaps a first live enterprise deployment (Codex, service-pr
 
 **Not a bug (verified):** the live test's device-code complaint was a self-inflicted custom-helper auth mistake — Core's auth was correct and was left unchanged.
 
-## Backlog (v1.7+)
-
-- **Calculated / rollup column passthrough** — optionally accept a *pre-exported* WWF XAML `formulaDefinition` to create calculated/rollup columns directly (formula/Power Fx stays maker-only — impossible via SDK). Gated behind an explicit `--allow-unsupported-formula-xaml` escape with loud warnings. **Blocked on a live DEV spike** confirming hand-carried XAML round-trips to a *valid* (not `SourceTypeMask=32 Invalid`) column on our SDK version, and the rollup helper-column/async-job behavior. Deferred from v1.6 to avoid shipping an unverified fragile path.
-
 ## v1.5.0 — "Trust & Interop"
 
 Theme: make the safety story *technically enforced* (not just skill-instructed), add the unattended-auth path nobody else has, and formally embrace the Dataverse MCP as a complementary channel.
