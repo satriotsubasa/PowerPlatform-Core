@@ -682,7 +682,29 @@ def build_solution_wrapper(solution_project: Path, *, configuration: str, cwd: P
             ) from dotnet_error
 
 
+def has_word_templates_area(repo: Path) -> bool:
+    """True when repo discovery resolves a Word Templates area (auto-detected top-level folder or a project-profile-configured path)."""
+    try:
+        context = discover_repo_context(repo)
+    except Exception:
+        return False
+    inferred = context.get("inferred", {}) if isinstance(context, dict) else {}
+    area = inferred.get("word_templates_area")
+    return isinstance(area, str) and bool(area.strip())
+
+
 def run_word_template_check(repo: Path, raw_path: str | None) -> dict[str, Any]:
+    # Absent-surface auto-skip: a repo with no Word Templates area should not fail the whole
+    # delivery preflight (mirrors the PCF and solution-pack checks, which warn-and-pass when
+    # their surface is missing). An explicit --word-templates-path still forces the check.
+    if not raw_path and not has_word_templates_area(repo):
+        return {
+            "name": "word-templates",
+            "success": True,
+            "status": "warning",
+            "message": "No Word Templates area was discovered in this repo; skipping template validation.",
+        }
+
     command = [
         sys.executable,
         str(Path(__file__).resolve().parent / "inspect_word_templates.py"),

@@ -137,6 +137,17 @@ When live work still depends on PAC context:
 - warn immediately if they differ
 - do not silently assume the currently selected PAC environment is the intended one just because it is active
 
+## How Core acquires tokens (reuse it — do not hand-roll auth)
+
+The compiled `DataverseOps` tool owns Dataverse authentication so callers never re-implement it. It:
+
+- normalizes the token scope to the environment's **authority root** (`https://{org}.crm.dynamics.com`, not the full `/XRMServices/...` service URI) before requesting a token — the single most common mistake when hand-rolling a helper;
+- registers a **persistent MSAL token cache** (DPAPI-backed on Windows) so sign-in is reused silently across runs;
+- uses the **WAM broker** on Windows and only falls back to the **device-code** flow on macOS/Linux or a cold/expired cache;
+- exposes unattended **service-principal** auth (`--auth-flow clientsecret`/`certificate`, secret via env var) for CI/headless use.
+
+If a repo needs a capability a Core helper does not yet expose (for example a metadata property Core cannot set), prefer extending the shared `DataverseOps` tool or driving it via the Python helpers over writing a standalone .NET/SDK executable — a separate process will not share Core's token cache and, if it re-derives the MSAL scope incorrectly, degrades to repeated device-code prompts. Reuse Core's auth path; do not re-invent it.
+
 ## Solution Discipline
 
 - Surface the selected solution name and current version before applying changes when the auth dialog is part of the flow.

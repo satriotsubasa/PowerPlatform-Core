@@ -105,9 +105,38 @@ internal static partial class Program
             91 => ResolvePluginAssemblySolutionComponent(client, item),
             92 => ResolveSdkMessageProcessingStepSolutionComponent(client, item),
             93 => ResolveSdkMessageProcessingStepImageSolutionComponent(client, item),
+            380 => ResolveEnvironmentVariableDefinitionSolutionComponent(client, item),
+            381 => ResolveEnvironmentVariableValueSolutionComponent(client, item),
             _ => throw new InvalidOperationException(
                 $"Unsupported solution component type '{item.ComponentType ?? explicitType.ToString()}'."),
         };
+    }
+
+    private static ResolvedSolutionComponent ResolveEnvironmentVariableDefinitionSolutionComponent(ServiceClient client, SolutionComponentItemSpec item)
+    {
+        var definition = ResolveEnvironmentVariableDefinition(client, null, item.SchemaName ?? item.Name, null);
+        return new ResolvedSolutionComponent(
+            definition.Id,
+            380,
+            $"environmentvariabledefinition:{definition.GetAttributeValue<string>("schemaname")}",
+            "environmentvariabledefinition");
+    }
+
+    private static ResolvedSolutionComponent ResolveEnvironmentVariableValueSolutionComponent(ServiceClient client, SolutionComponentItemSpec item)
+    {
+        var definition = ResolveEnvironmentVariableDefinition(client, null, item.SchemaName ?? item.Name, null);
+        var values = LoadEnvironmentVariableValues(client, definition.Id, null);
+        if (values.Count == 0)
+        {
+            throw new InvalidOperationException(
+                $"No environment variable value exists for '{item.SchemaName ?? item.Name}' to add to the solution.");
+        }
+
+        return new ResolvedSolutionComponent(
+            values[0].Id,
+            381,
+            $"environmentvariablevalue:{definition.GetAttributeValue<string>("schemaname")}",
+            "environmentvariablevalue");
     }
 
     private static ResolvedSolutionComponent ResolveEntitySolutionComponent(ServiceClient client, SolutionComponentItemSpec item)
@@ -486,6 +515,8 @@ internal static partial class Program
             "pluginassembly" => 91,
             "sdkmessageprocessingstep" or "step" => 92,
             "sdkmessageprocessingstepimage" or "stepimage" => 93,
+            "environmentvariabledefinition" or "envvardefinition" => 380,
+            "environmentvariablevalue" or "envvarvalue" => 381,
             _ => throw new InvalidOperationException($"Unsupported solution component type '{value}'."),
         };
     }
@@ -509,6 +540,8 @@ internal static partial class Program
             91 => $"pluginassembly:{item.Name}",
             92 => $"sdkmessageprocessingstep:{item.Name}",
             93 => $"sdkmessageprocessingstepimage:{item.Name}",
+            380 => $"environmentvariabledefinition:{item.SchemaName ?? item.Name}",
+            381 => $"environmentvariablevalue:{item.SchemaName ?? item.Name}",
             _ => $"component:{componentType}:{item.ComponentId}",
         };
     }
@@ -532,6 +565,8 @@ internal static partial class Program
             91 => "pluginassembly",
             92 => "sdkmessageprocessingstep",
             93 => "sdkmessageprocessingstepimage",
+            380 => "environmentvariabledefinition",
+            381 => "environmentvariablevalue",
             _ => componentType.ToString(),
         };
     }
