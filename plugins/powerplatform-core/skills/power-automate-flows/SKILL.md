@@ -50,6 +50,7 @@ The helpers live in the plugin's `scripts/` directory at the plugin root, not in
 | `get_flow_trigger_url.py` | Resolve the signed callback URL for an HTTP-trigger flow. **Windows-only / optional:** depends on Windows PowerShell plus the PowerApps admin module, and may prompt for a separate Power Apps sign-in. Skip gracefully where unavailable and tell the user. |
 | `inspect_environment_variable.py` | Inspect an environment variable definition or read the current value that applies in the target environment. |
 | `set_environment_variable_value.py` | Create or update the live `environmentvariablevalue` record for an existing definition. Prefer this over manual maker-portal edits when wiring a flow endpoint or environment-specific value. |
+| `create_environment_variable_definition.py` | Create a new solution-aware `environmentvariabledefinition` (schemaName must carry the publisher prefix; `type` is string/number/boolean/json/datasource/secret) with optional description, defaultValue, and an initial value. Use when the definition itself does not exist yet; use `set_environment_variable_value.py` once it does. |
 
 ## Domain workflow
 

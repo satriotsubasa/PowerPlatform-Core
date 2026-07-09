@@ -14,6 +14,7 @@ from powerplatform_common import discover_repo_context, infer_publisher_prefix, 
 
 SUPPORTED_FIELD_TYPES = {
     "string",
+    "autonumber",
     "memo",
     "integer",
     "decimal",
@@ -182,6 +183,25 @@ def build_field_design(raw: Any, *, prefix: str, table_logical_name: str, soluti
         raise RuntimeError("Each field item must be a JSON object.")
 
     display_name = require_text(raw, "displayName")
+
+    # Computed columns (formula/calculated/rollup) can't be authored headlessly: Power Fx formula
+    # columns are maker-portal only, and calculated/rollup rely on an unsupported hand-authored XAML
+    # definition. Redirect to the supported author-in-maker -> solution-import path.
+    raw_type = str(raw.get("type") or "").strip().lower()
+    computed = raw.get("computed")
+    if raw_type in {"formula", "calculated", "rollup"} or isinstance(computed, dict) or text_value(raw, "sourceType") or text_value(raw, "formulaDefinition"):
+        kind = raw_type if raw_type in {"formula", "calculated", "rollup"} else ""
+        if not kind and isinstance(computed, dict):
+            kind = str(computed.get("kind") or "").strip().lower()
+        kind = kind or (text_value(raw, "sourceType") or "computed")
+        raise RuntimeError(
+            f"{display_name}: computed columns ({kind}) can't be authored headlessly. Power Fx formula "
+            "columns are authored only in the Power Apps maker portal (make.powerapps.com); calculated and "
+            "rollup columns rely on an unsupported hand-authored XAML definition. Create the column in the "
+            "maker portal, add it to your unmanaged solution, and deliver it via solution import "
+            "(deploy_solution.py / pac solution import)."
+        )
+
     field_type = normalize_field_type(require_text(raw, "type"))
     logical_stub = slug_name(raw.get("logicalName") or display_name)
     logical_name = normalize_with_prefix(prefix, logical_stub)
@@ -201,10 +221,17 @@ def build_field_design(raw: Any, *, prefix: str, table_logical_name: str, soluti
         "solutionUniqueName": solution_unique_name,
     }
 
-    if field_type in {"string", "memo"}:
+    if field_type in {"string", "autonumber", "memo"}:
         helper_spec["maxLength"] = int(raw.get("maxLength") or (2000 if field_type == "memo" else DEFAULT_STRING_LENGTH))
         if field_type == "memo":
             helper_spec["type"] = "Memo"
+        auto_number_format = text_value(raw, "autoNumberFormat")
+        if field_type == "autonumber" and not auto_number_format:
+            raise RuntimeError("An 'autonumber' field requires 'autoNumberFormat', e.g. 'T-{SEQNUM:5}'.")
+        if auto_number_format:
+            if field_type == "memo":
+                raise RuntimeError("autoNumberFormat is only valid on 'string' or 'autonumber' fields, not 'memo'.")
+            helper_spec["autoNumberFormat"] = auto_number_format
     elif field_type == "integer":
         helper_spec["minValueInt"] = raw.get("minValueInt")
         helper_spec["maxValueInt"] = raw.get("maxValueInt")
@@ -397,6 +424,7 @@ def normalize_field_type(value: str) -> str:
 def map_helper_field_type(field_type: str) -> str:
     mapping = {
         "string": "String",
+        "autonumber": "String",
         "memo": "Memo",
         "integer": "Integer",
         "decimal": "Decimal",

@@ -163,6 +163,20 @@ internal static partial class Program
                 "Use the package update flow instead of first registration.");
         }
 
+        // Dataverse rejects a solution-aware plug-in package whose uniquename does not carry the
+        // owning solution's publisher prefix. Surface that locally with an actionable message
+        // instead of letting the raw server fault through. Bypass with allowPrefixMismatch.
+        var publisherPrefix = spec.AllowPrefixMismatch == true ? null : ResolvePublisherPrefix(client, spec.SolutionUniqueName);
+        if (!string.IsNullOrWhiteSpace(publisherPrefix)
+            && !spec.UniqueName!.StartsWith(publisherPrefix + "_", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Plug-in package uniqueName '{spec.UniqueName}' does not start with the publisher prefix " +
+                $"'{publisherPrefix}_' of solution '{spec.SolutionUniqueName}'. Rename the NuGet PackageId to " +
+                $"'{publisherPrefix}_{spec.UniqueName}', pass an explicit uniqueName that starts with the prefix, " +
+                "or set allowPrefixMismatch=true in the spec to bypass this check.");
+        }
+
         var packageEntity = new Entity("pluginpackage")
         {
             ["name"] = spec.Name,
@@ -199,6 +213,45 @@ internal static partial class Program
         };
         Console.WriteLine(JsonSerializer.Serialize(payload, JsonOptions));
         return 0;
+    }
+
+    // Resolve the customization (publisher) prefix of the solution a component is being created in.
+    // Returns null when no solution is supplied or the publisher/prefix cannot be read, so callers
+    // skip prefix validation rather than block on an unknown.
+    private static string? ResolvePublisherPrefix(ServiceClient client, string? solutionUniqueName)
+    {
+        if (string.IsNullOrWhiteSpace(solutionUniqueName))
+        {
+            return null;
+        }
+
+        var solution = RetrieveSingleOrDefault(
+            client,
+            "solution",
+            new ColumnSet("solutionid", "publisherid"),
+            new ConditionExpression("uniquename", ConditionOperator.Equal, solutionUniqueName));
+        var publisherRef = solution?.GetAttributeValue<EntityReference>("publisherid");
+        if (publisherRef is null)
+        {
+            return null;
+        }
+
+        Entity publisher;
+        try
+        {
+            publisher = client.Retrieve("publisher", publisherRef.Id, new ColumnSet("customizationprefix"));
+        }
+        catch (System.ServiceModel.FaultException<Microsoft.Xrm.Sdk.OrganizationServiceFault>)
+        {
+            // The publisher is referenced but unreadable (e.g. a narrow application-user role
+            // grants Read on solution but not publisher). Per this method's contract, return null
+            // so the caller skips local prefix validation rather than aborting; the server still
+            // enforces the real prefix rule on create.
+            return null;
+        }
+
+        var prefix = publisher.GetAttributeValue<string>("customizationprefix");
+        return string.IsNullOrWhiteSpace(prefix) ? null : prefix;
     }
 
     private static string[] GetRequiredPluginTypeNames(IReadOnlyCollection<PluginStepRegistrationSpec> steps)
@@ -721,6 +774,9 @@ internal static partial class Program
         public string? SolutionUniqueName { get; init; }
 
         public int? PluginTypeWaitSeconds { get; init; }
+
+        // Bypass the local publisher-prefix pre-check on the package uniqueName.
+        public bool? AllowPrefixMismatch { get; init; }
 
         public List<PluginStepRegistrationSpec> Steps { get; init; } = new();
     }

@@ -415,6 +415,10 @@ internal static partial class Program
 
     private static AttributeMetadata BuildAttributeMetadata(AttributeCreateSpec spec)
     {
+        // Computed columns (formula/calculated/rollup) can't be authored headlessly — redirect
+        // instead of silently creating a plain column when a computed intent is supplied.
+        ComputedColumns.RejectHeadlessCreation(spec.SourceType, spec.FormulaDefinition);
+
         var logicalName = NormalizeLogicalName(spec.LogicalName ?? spec.SchemaName);
         var requiredLevel = new AttributeRequiredLevelManagedProperty(ParseRequiredLevel(spec.RequiredLevel));
         AttributeMetadata attribute = spec.Type.Trim().ToLowerInvariant() switch
@@ -423,6 +427,8 @@ internal static partial class Program
             {
                 MaxLength = spec.MaxLength ?? 100,
                 Format = ParseStringFormat(spec.StringFormat),
+                // When set (e.g. "T-{SEQNUM:5}") this makes the column a Dataverse auto-number column.
+                AutoNumberFormat = string.IsNullOrWhiteSpace(spec.AutoNumberFormat) ? null : spec.AutoNumberFormat,
             },
             "memo" => new MemoAttributeMetadata
             {
@@ -1257,6 +1263,11 @@ internal static partial class Program
 
         public string? StringFormat { get; init; }
 
+        // Dataverse auto-number format string for a string column, e.g. "T-{SEQNUM:5}" or
+        // "{DATETIMEUTC:yyyyMMdd}-{SEQNUM:4}". When present, the string column is created as an
+        // auto-number column. Only valid for type "string".
+        public string? AutoNumberFormat { get; init; }
+
         public string? IntegerFormat { get; init; }
 
         public int? MinValueInt { get; init; }
@@ -1282,6 +1293,13 @@ internal static partial class Program
         public List<ChoiceOptionSpec> Options { get; init; } = new();
 
         public int? OptionValueSeed { get; init; }
+
+        // Computed-column markers, captured only so the tool can DETECT a formula/calculated/rollup
+        // request and reject it with an actionable redirect (see ComputedColumns.RejectHeadlessCreation).
+        // These are never used to author a column — computed columns are maker-portal + solution-import.
+        public string? SourceType { get; init; }
+
+        public string? FormulaDefinition { get; init; }
     }
 
     private sealed class ChoiceOptionSpec

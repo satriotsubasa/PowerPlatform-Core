@@ -43,8 +43,10 @@ Design helpers (offline planning — take `--spec` plus optional `--repo-root` /
 Live metadata helpers (each takes `--spec` — a JSON object or a path to a JSON file — plus shared auth flags: `--environment-url`/`--target-url`, `--username`, `--tenant-id`, `--auth-dialog`, `--auto-validate`, `--auth-flow {auto,devicecode,interactive}`, `--force-prompt`, `--verbose`):
 
 - `create_table.py` — create a table (primary name, ownership, notes/activities/audit).
-- `create_field.py` — create a column (string, memo, integer, decimal, money, boolean, datetime, choice, multiselect, etc.).
+- `create_field.py` — create a column (string, memo, integer, decimal, money, boolean, datetime, choice, multiselect, etc.). For an **auto-number** column, create a `string` field and pass `autoNumberFormat` (e.g. `"T-{SEQNUM:5}"` or `"{DATETIMEUTC:yyyyMMdd}-{SEQNUM:4}"`); `design_dataverse_schema.py` also accepts `type: "autonumber"` as shorthand (which requires `autoNumberFormat`).
 - `create_lookup.py` — create a lookup relationship between two tables.
+
+**Computed columns (formula / calculated / rollup) are not created by this helper — deliberately.** Power Fx **formula** columns are authored only in the Power Apps maker portal (Microsoft does not support defining the formula in code), and classic **calculated**/**rollup** columns depend on an unsupported hand-authored WWF XAML definition that silently produces an *Invalid, read-only* column when malformed. `create_field.py` therefore rejects a computed request (`type: formula|calculated|rollup`, a `computed` sub-object, or a raw `sourceType`/`formulaDefinition`) with a redirect. The supported headless path: author the column once in the maker portal, add it to the unmanaged solution, and move it between environments via **solution import** (`solution-alm-delivery` / `deploy_solution.py`). Formula columns are the modern choice over calculated/rollup for new work.
 - `update_main_form.py` — update a named main form's layout (tabs, sections, field placement, subgrids).
 - `update_form_events.py` — register form script libraries and event handler bindings on a form.
 - `patch_form_xml.py` — targeted `systemform.formxml` patch operations (replace header/body fragments, insert XML, set element attributes) on a named form; also accepts `--repo-root`.

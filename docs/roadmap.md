@@ -2,11 +2,28 @@
 
 Living document. Informed by the [Dataverse MCP comparison](comparison-dataverse-mcp.md) (July 2026): PowerPlatform-Core's moat is **repo-first delivery with enforced safety** — the roadmap hardens that moat instead of competing with the MCP on conversational data access.
 
+## v1.6.0 — "Live-test hardening"
+
+Theme: close the real gaps a first live enterprise deployment (Codex, service-principal, layered repo) surfaced, and remove the friction that forced hand-rolled helpers.
+
+- **Auto-number columns** — `create_field.py` / the metadata tool now set `StringAttributeMetadata.AutoNumberFormat`; the schema designer accepts `type: "autonumber"` or `autoNumberFormat` on a string field. (Closes the gap that forced a custom SDK helper.)
+- **Environment variable *definition* creation** — new `envvar --mode create-definition` and `create_environment_variable_definition.py` (schema-name prefix validation, `type` mapping, optional initial value, solution placement); env-var definition/value component types (380/381) added to the solution-component maps.
+- **Plug-in package publisher-prefix pre-check** — `register-package` resolves the target solution's publisher prefix and fails locally with an actionable message when the package uniqueName is missing it (bypass with `allowPrefixMismatch`), instead of surfacing the raw Dataverse fault.
+- **`validate_delivery.py` absent-surface auto-skip** — the Word Templates check now warns-and-passes when no Word Templates area exists (matching the PCF/solution-pack checks), so a repo without document generation no longer needs `--skip-word-templates`.
+- **Computed columns (formula / calculated / rollup) — safe redirect, not create.** Verified against Microsoft docs: Power Fx **formula** columns cannot be authored in code (maker-portal only), and **calculated/rollup** rely on unsupported hand-authored WWF XAML that silently yields an *Invalid* column. Rather than ship a fragile write path, `create_field` now *detects* a computed request (`type: formula|calculated|rollup`, a `computed` sub-object, or raw `sourceType`/`formulaDefinition`) and returns an actionable redirect to the supported path: author in the maker portal → deliver via solution import (`deploy_solution.py`). Documented in the `dataverse-schema` skill.
+- **Docs** — fixed the orchestrator skill's dangling references (the MCP comparison doc and `claude mcp add` now inline / point to GitHub); documented Core's auth contract (authority-root scope, persistent MSAL cache, WAM broker) so overlays reuse it instead of re-rolling auth (the root cause of a live-test device-code detour).
+
+**Not a bug (verified):** the live test's device-code complaint was a self-inflicted custom-helper auth mistake — Core's auth was correct and was left unchanged.
+
+## Backlog (v1.7+)
+
+- **Calculated / rollup column passthrough** — optionally accept a *pre-exported* WWF XAML `formulaDefinition` to create calculated/rollup columns directly (formula/Power Fx stays maker-only — impossible via SDK). Gated behind an explicit `--allow-unsupported-formula-xaml` escape with loud warnings. **Blocked on a live DEV spike** confirming hand-carried XAML round-trips to a *valid* (not `SourceTypeMask=32 Invalid`) column on our SDK version, and the rollup helper-column/async-job behavior. Deferred from v1.6 to avoid shipping an unverified fragile path.
+
 ## v1.5.0 — "Trust & Interop"
 
 Theme: make the safety story *technically enforced* (not just skill-instructed), add the unattended-auth path nobody else has, and formally embrace the Dataverse MCP as a complementary channel.
 
-> **Status (July 2026):** Phases A–D implemented on `feature/v1.5-trust-interop` and green under `verify_repo.py`. Pending maintainer **live verification** of service-principal auth (Phase A) and preflight-token gating (Phase B) before tag + release.
+> **Status:** Shipped to `main` and released as `v1.5.0`. Phases A–D (service-principal auth, enforced preflight tokens, MCP interop, positioning/bootstrap/dry-run) all delivered.
 
 ### Phase A — Service-principal / client-credentials auth (highest leverage)
 

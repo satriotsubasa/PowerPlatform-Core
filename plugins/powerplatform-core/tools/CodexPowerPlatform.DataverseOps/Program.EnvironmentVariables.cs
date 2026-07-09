@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.PowerPlatform.Dataverse.Client;
 using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Query;
 
 internal static partial class Program
@@ -43,7 +44,8 @@ internal static partial class Program
             "inspect" => RunEnvironmentVariableInspect(client, options),
             "get-value" => RunEnvironmentVariableGetValue(client, options),
             "set-value" => RunEnvironmentVariableSetValue(client, options),
-            _ => throw new InvalidOperationException("Unsupported envvar mode. Use --mode inspect, get-value, or set-value."),
+            "create-definition" => RunEnvironmentVariableCreateDefinition(client, options),
+            _ => throw new InvalidOperationException("Unsupported envvar mode. Use --mode inspect, get-value, set-value, or create-definition."),
         };
     }
 
@@ -153,6 +155,91 @@ internal static partial class Program
             mode = "set-value",
             recordCreated,
             environmentVariable = BuildEnvironmentVariablePayload(definition, refreshedValues),
+        }, JsonOptions));
+        return 0;
+    }
+
+    private static int RunEnvironmentVariableCreateDefinition(ServiceClient client, Dictionary<string, string?> options)
+    {
+        var specText = ReadSpecText(options);
+        var spec = JsonSerializer.Deserialize<EnvironmentVariableDefinitionSpec>(specText, InputJsonOptions)
+            ?? throw new InvalidOperationException("Expected a JSON object for environment variable definition spec.");
+
+        ValidateRequired(spec.SchemaName, "schemaName");
+        ValidateRequired(spec.DisplayName, "displayName");
+
+        var existing = RetrieveSingleOrDefault(
+            client,
+            "environmentvariabledefinition",
+            new ColumnSet("environmentvariabledefinitionid", "schemaname"),
+            new ConditionExpression("schemaname", ConditionOperator.Equal, spec.SchemaName));
+        if (existing is not null)
+        {
+            throw new InvalidOperationException(
+                $"An environment variable definition with schema name '{spec.SchemaName}' already exists ({existing.Id}). " +
+                "Use --mode set-value to change its value instead.");
+        }
+
+        // Env-var definitions are solution-aware components, so they must carry the owning
+        // solution's publisher prefix. Validate locally with an actionable message (bypass with
+        // allowPrefixMismatch).
+        var publisherPrefix = spec.AllowPrefixMismatch == true ? null : ResolvePublisherPrefix(client, spec.SolutionUniqueName);
+        if (!string.IsNullOrWhiteSpace(publisherPrefix)
+            && !spec.SchemaName!.StartsWith(publisherPrefix + "_", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Environment variable schemaName '{spec.SchemaName}' does not start with the publisher prefix " +
+                $"'{publisherPrefix}_' of solution '{spec.SolutionUniqueName}'. Use '{publisherPrefix}_...' as the schema " +
+                "name or set allowPrefixMismatch=true to bypass this check.");
+        }
+
+        var definition = new Entity("environmentvariabledefinition")
+        {
+            ["schemaname"] = spec.SchemaName,
+            ["displayname"] = spec.DisplayName,
+            ["type"] = new OptionSetValue(EnvironmentVariableTypes.Parse(spec.Type)),
+        };
+        if (!string.IsNullOrWhiteSpace(spec.Description))
+        {
+            definition["description"] = spec.Description;
+        }
+        if (spec.DefaultValue is not null)
+        {
+            definition["defaultvalue"] = spec.DefaultValue;
+        }
+
+        var createRequest = new CreateRequest { Target = definition };
+        ApplySolutionParameter(createRequest, spec.SolutionUniqueName);
+        var definitionId = ((CreateResponse)client.Execute(createRequest)).id;
+
+        Entity? initialValue = null;
+        var valueCreated = false;
+        if (spec.Value is not null)
+        {
+            var valueEntity = new Entity("environmentvariablevalue")
+            {
+                ["environmentvariabledefinitionid"] = new EntityReference("environmentvariabledefinition", definitionId),
+                ["value"] = spec.Value,
+            };
+            // The current value is environment-specific and should NOT be packaged into the
+            // solution (only the definition and its defaultValue travel between environments), so
+            // this create is intentionally unscoped — matching set-value's behavior.
+            var valueId = client.Create(valueEntity);
+            initialValue = client.Retrieve("environmentvariablevalue", valueId, new ColumnSet(EnvironmentVariableValueColumns));
+            valueCreated = true;
+        }
+
+        var created = client.Retrieve(
+            "environmentvariabledefinition",
+            definitionId,
+            new ColumnSet(EnvironmentVariableDefinitionColumns));
+        var values = initialValue is null ? new List<Entity>() : new List<Entity> { initialValue };
+        Console.WriteLine(JsonSerializer.Serialize(new
+        {
+            success = true,
+            mode = "create-definition",
+            valueCreated,
+            environmentVariable = BuildEnvironmentVariablePayload(created, values),
         }, JsonOptions));
         return 0;
     }
@@ -289,5 +376,47 @@ internal static partial class Program
         public string? ValueId { get; init; }
 
         public string? Value { get; init; }
+    }
+
+    private sealed class EnvironmentVariableDefinitionSpec
+    {
+        public string? SchemaName { get; init; }
+
+        public string? DisplayName { get; init; }
+
+        public string? Description { get; init; }
+
+        // string | number | boolean | json | datasource | secret (or a raw option-set value).
+        public string? Type { get; init; }
+
+        public string? DefaultValue { get; init; }
+
+        // Optional initial current value to create alongside the definition.
+        public string? Value { get; init; }
+
+        public string? SolutionUniqueName { get; init; }
+
+        public bool? AllowPrefixMismatch { get; init; }
+    }
+}
+
+/// <summary>Maps friendly environment-variable type names to Dataverse option-set values.</summary>
+public static class EnvironmentVariableTypes
+{
+    public static int Parse(string? rawValue)
+    {
+        return rawValue?.Trim().ToLowerInvariant() switch
+        {
+            null or "" or "string" or "text" => 100000000,
+            "number" or "int" or "integer" or "decimal" or "double" => 100000001,
+            "boolean" or "bool" or "yesno" or "twooptions" => 100000002,
+            "json" => 100000003,
+            "datasource" or "data-source" => 100000004,
+            "secret" => 100000005,
+            _ => int.TryParse(rawValue, out var numeric)
+                ? numeric
+                : throw new InvalidOperationException(
+                    $"Unsupported environment variable type '{rawValue}'. Use string, number, boolean, json, datasource, or secret."),
+        };
     }
 }
