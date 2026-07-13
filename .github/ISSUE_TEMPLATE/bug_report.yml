@@ -1,0 +1,74 @@
+name: Bug report
+description: Something the plugin did wrong, or did not do
+title: "[Bug]: "
+labels: ["bug"]
+assignees:
+  - satriotsubasa
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug.
+
+        **Please do not paste secrets or customer data.** No client secrets, certificate passwords,
+        connection strings, full environment or tenant URLs, or real business data. Redact anything
+        sensitive first (for example `https://REDACTED.crm.dynamics.com`).
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: The version from the plugin manifest or the install path (for example 1.6.0).
+      placeholder: "1.6.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Coding agent
+      options:
+        - Claude Code
+        - OpenAI Codex
+        - Cursor (experimental)
+        - Gemini (experimental)
+        - GitHub Copilot (experimental)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you ask for, and what did the plugin actually do?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: The prompt or helper command you ran and how to get there. Redact secrets and URLs.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output or errors
+      description: Paste any error output. Redact environment URLs, secrets, and customer data first.
+      render: shell
+    validations:
+      required: false
